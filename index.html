@@ -349,6 +349,9 @@ body {
 }
 .action-edit-grid { display: grid; grid-template-columns: 0.7fr 1.2fr 1fr; gap: 8px; margin-top: 10px; }
 .action-edit-grid .inp { padding: 9px 10px; font-size: 0.85rem; }
+.upload-row { display: grid; gap: 8px; margin-top: 10px; }
+.file-inp { width: 100%; color: var(--muted); font-size: 0.82rem; }
+.upload-hint { color: var(--muted); font-size: 0.72rem; line-height: 1.35; }
 
 /* Stats */
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -549,6 +552,11 @@ body {
         <input class="inp" id="custom-label" placeholder="Tên hành động" maxlength="18">
         <button class="tool-btn" onclick="addCustomAction()">Thêm</button>
       </div>
+      <div class="upload-row">
+        <input class="file-inp" id="bg-upload" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm">
+        <button class="tool-btn" onclick="uploadBackground()">Upload nền ảnh/video</button>
+        <div class="upload-hint">Ảnh tối đa 8MB. Video MP4/WebM tối đa 40MB và 60 giây, tự phát lặp lại.</div>
+      </div>
       <p class="presence-lbl" style="margin-top:8px">Template và hành động custom sẽ lưu vào DB của room.</p>
     </div>
 
@@ -570,6 +578,7 @@ body {
     </aside>
 
     <main class="room-stage" id="room-stage">
+      <div id="stage-bg"></div>
       <div class="stage-content">
     <!-- Actions -->
     <div class="card">
@@ -634,7 +643,8 @@ body {
   </div>
 </div>
 
-<script>
+<script type="module">
+import { upload } from 'https://esm.sh/@vercel/blob@2.4.1/client';
 // ===== APP STATE =====
 const API = {
   rooms: '/api/rooms',
@@ -733,6 +743,74 @@ function applyTheme(theme) {
   root.style.setProperty('--pink2', theme.pink || '#ff85b8');
   root.style.setProperty('--purple', theme.purple || '#c47cff');
   root.style.setProperty('--blue', theme.blue || '#6ec6ff');
+  renderStageBackground(theme.background);
+}
+
+function renderStageBackground(background) {
+  const target = document.getElementById('stage-bg');
+  if (!target) return;
+  target.innerHTML = '';
+  if (!background || !background.url) return;
+  if (background.type === 'video') {
+    target.innerHTML = `<video class="stage-bg-media" src="${background.url}" autoplay muted loop playsinline></video>`;
+  } else {
+    target.innerHTML = `<img class="stage-bg-media" src="${background.url}" alt="">`;
+  }
+}
+
+async function uploadBackground() {
+  const input = document.getElementById('bg-upload');
+  const file = input && input.files && input.files[0];
+  if (!file) { showToast('Chọn ảnh hoặc video trước nhé'); return; }
+  try {
+    validateBackgroundFile(file);
+    if (file.type.startsWith('video/')) await validateVideoDuration(file, 60);
+    showToast('Đang upload nền...');
+    const safeName = file.name.replace(/[^a-z0-9._-]/gi, '-').toLowerCase();
+    const blob = await upload(`rooms/${S.roomId}/background/${Date.now()}-${safeName}`, file, {
+      access: 'public',
+      contentType: file.type,
+      handleUploadUrl: '/api/blob-upload',
+      clientPayload: JSON.stringify({ roomId: S.roomId, contentType: file.type, size: file.size })
+    });
+    const background = {
+      type: file.type.startsWith('video/') ? 'video' : 'image',
+      url: blob.url,
+      contentType: file.type,
+      size: file.size,
+      loop: file.type.startsWith('video/'),
+      muted: true
+    };
+    const theme = { ...S.theme, background };
+    const data = await apiPost(API.rooms, { type: 'theme', roomId: S.roomId, themeConfig: theme, persist: true });
+    applyRoomState(data.room);
+    input.value = '';
+    showToast('Đã lưu background room');
+  } catch (error) {
+    showToast(error.message || 'Upload thất bại');
+  }
+}
+
+function validateBackgroundFile(file) {
+  const imageTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  const videoTypes = ['video/mp4', 'video/webm'];
+  if (![...imageTypes, ...videoTypes].includes(file.type)) throw new Error('Chỉ hỗ trợ JPG, PNG, WebP, MP4, WebM');
+  if (imageTypes.includes(file.type) && file.size > 8 * 1024 * 1024) throw new Error('Ảnh tối đa 8MB');
+  if (videoTypes.includes(file.type) && file.size > 40 * 1024 * 1024) throw new Error('Video tối đa 40MB');
+}
+
+function validateVideoDuration(file, maxSeconds) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(video.src);
+      if (video.duration > maxSeconds) reject(new Error('Video tối đa 60 giây'));
+      else resolve();
+    };
+    video.onerror = () => reject(new Error('Không đọc được video'));
+    video.src = URL.createObjectURL(file);
+  });
 }
 
 function renderTemplates() {
@@ -1257,6 +1335,28 @@ function leaveRoom() {
   showScreen('entry');
   showToast('Đã thoát room 👋');
 }
+
+Object.assign(window, {
+  switchTab,
+  generateRoom,
+  copyGeneratedId,
+  copyRoomId,
+  createRoom,
+  joinRoom,
+  holdStart,
+  holdEnd,
+  sendConfiguredAction,
+  addCustomAction,
+  saveTheme,
+  uploadBackground,
+  petAction,
+  savePetDesign,
+  toggleLogPanel,
+  rateStar,
+  submitFeedback,
+  cancelWaiting,
+  leaveRoom
+});
 </script>
 </body>
 </html>
