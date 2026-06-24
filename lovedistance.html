@@ -316,25 +316,32 @@ body {
 }
 
 /* Pet + customize */
-.pet-card {
-  position: absolute; right: 18px; bottom: 18px; z-index: 3; width: 260px;
-  background: rgba(26,13,46,0.88); backdrop-filter: blur(10px);
-  overflow: hidden; min-height: 0;
-}
-.pet-stage {
-  height: 88px; background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
-  border-radius: 14px; position: relative; margin-bottom: 14px;
-}
-.pet {
-  position: absolute; left: 12%; bottom: 12px; font-size: 3.2rem;
-  animation: petWalk 7s ease-in-out infinite, petBob 1.6s ease-in-out infinite;
-}
-.pet.happy, .pet.excited, .pet.playful, .pet.loved { filter: drop-shadow(0 0 14px rgba(255,133,184,0.75)); }
-@keyframes petWalk { 0%,100%{left:10%} 50%{left:76%} }
+.pet-widget { position: absolute; right: 28px; bottom: 24px; z-index: 5; width: 210px; height: 170px; }
+.pet-scene { position: absolute; right: 22px; bottom: 0; width: 128px; height: 118px; animation: petDrift 8s ease-in-out infinite; }
+.pet-sprite { position: absolute; left: 18px; bottom: 14px; width: 82px; height: 62px; border-radius: 48% 48% 42% 42%; background: #f6d6b8; box-shadow: inset -10px -8px rgba(0,0,0,0.08), 0 12px 30px rgba(0,0,0,0.28); animation: petBob 1.8s ease-in-out infinite; }
+.pet-sprite::before, .pet-sprite::after { content: ''; position: absolute; display: block; }
+.pet-sprite::before { width: 42px; height: 42px; border-radius: 50%; background: inherit; right: -16px; top: -18px; box-shadow: inset -6px -5px rgba(0,0,0,0.07); }
+.pet-sprite::after { width: 9px; height: 9px; border-radius: 50%; background: #1b1024; right: 5px; top: -3px; box-shadow: 18px 0 #1b1024; }
+.pet-ear { position: absolute; width: 20px; height: 30px; background: #d79a75; border-radius: 80% 80% 30% 30%; top: -30px; right: 8px; transform: rotate(-18deg); }
+.pet-ear.e2 { right: -9px; transform: rotate(24deg); }
+.pet-tail { position: absolute; width: 30px; height: 18px; border: 7px solid #f6d6b8; border-left: none; border-bottom: none; border-radius: 50%; left: -20px; top: 18px; transform: rotate(-20deg); }
+.pet-leg { position: absolute; width: 13px; height: 19px; border-radius: 8px; background: #d79a75; bottom: -8px; left: 18px; box-shadow: 38px 0 #d79a75; }
+.pet-label { position: absolute; right: 28px; bottom: 122px; text-align: center; font-weight: 900; color: var(--pink2); text-shadow: 0 2px 12px rgba(0,0,0,0.5); }
+.pet-level-chip { display: inline-block; margin-top: 4px; padding: 3px 8px; border-radius: 999px; background: rgba(15,6,23,0.72); color: var(--muted); font-size: 0.68rem; }
+.pet-controls { position: absolute; right: 0; bottom: 0; width: 230px; padding: 12px; border-radius: 14px; background: rgba(26,13,46,0.94); border: 1px solid var(--border); backdrop-filter: blur(12px); opacity: 0; pointer-events: none; transform: translateY(8px); transition: opacity .16s, transform .16s; }
+.pet-widget:hover .pet-controls, .pet-widget:focus-within .pet-controls { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.pet-widget[data-type="cat"] .pet-sprite { background: #b9b4ff; }
+.pet-widget[data-type="cat"] .pet-ear { clip-path: polygon(50% 0, 100% 100%, 0 100%); border-radius: 4px; background: #9189f4; }
+.pet-widget[data-type="bunny"] .pet-sprite { background: #fff1f8; }
+.pet-widget[data-type="bunny"] .pet-ear { height: 48px; top: -47px; background: #ffd0e6; }
+.pet-widget[data-type="fox"] .pet-sprite { background: #f59e42; }
+.pet-widget[data-type="fox"] .pet-ear { clip-path: polygon(50% 0, 100% 100%, 0 100%); border-radius: 4px; background: #d97706; }
+.pet-widget[data-type="fox"] .pet-tail { border-color: #f59e42; width: 38px; height: 25px; }
+@keyframes petDrift { 0%,100%{transform:translateX(0)} 50%{transform:translateX(-46px)} }
 @keyframes petBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
 .pet-meta { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
 .pet-name { font-weight: 900; color: var(--pink2); }
-.pet-bars { display: grid; gap: 6px; margin-top: 10px; }
+.pet-bars { display: grid; gap: 6px; margin-top: 8px; }
 .mini-bar { height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden; }
 .mini-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--pink), var(--purple)); }
 .tool-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
@@ -547,10 +554,12 @@ body {
     <div class="card">
       <div class="card-title">🎨 Tùy chỉnh Room</div>
       <div class="template-grid" id="template-grid"></div>
-      <div class="action-edit-grid">
-        <input class="inp" id="custom-emoji" placeholder="Emoji" maxlength="4">
-        <input class="inp" id="custom-label" placeholder="Tên hành động" maxlength="18">
-        <button class="tool-btn" onclick="addCustomAction()">Thêm</button>
+      <div style="margin-top:16px; font-size:0.78rem; font-weight:700; color:var(--muted); text-transform:uppercase;">Hành động của Room</div>
+      <div id="current-actions-list" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
+      <div class="action-edit-grid" style="margin-top:8px;">
+        <input class="inp" id="custom-emoji" placeholder="Emoji (vd: 🎁)" maxlength="4">
+        <input class="inp" id="custom-label" placeholder="Tên (vd: Tặng quà)" maxlength="18">
+        <button class="tool-btn" style="background:linear-gradient(135deg,var(--pink),var(--purple)); color:#fff; border:none;" onclick="addCustomAction()">Thêm</button>
       </div>
       <div class="upload-row">
         <input class="file-inp" id="bg-upload" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm">
@@ -605,31 +614,42 @@ body {
 
       </div>
     <!-- Pet -->
-    <div class="card pet-card">
-      <div class="card-title">🐾 Pet của Room</div>
-      <div class="pet-stage"><div class="pet" id="room-pet">💞</div></div>
-      <div class="pet-meta">
-        <div><div class="pet-name" id="pet-name">Mochi</div><div class="presence-lbl" id="pet-mood">curious</div></div>
-        <div style="text-align:right"><div class="pet-name">Lv. <span id="pet-level">1</span></div><div class="presence-lbl"><span id="pet-xp">0</span> XP</div></div>
+    <div class="pet-widget" id="pet-widget" data-type="dog">
+      <div class="pet-scene">
+        <div class="pet-sprite">
+          <div class="pet-ear"></div>
+          <div class="pet-ear e2"></div>
+          <div class="pet-tail"></div>
+          <div class="pet-leg"></div>
+        </div>
       </div>
-      <div class="pet-bars">
-        <div class="presence-lbl">Tình cảm</div><div class="mini-bar"><span id="pet-affection" style="width:20%"></span></div>
-        <div class="presence-lbl">Năng lượng</div><div class="mini-bar"><span id="pet-energy" style="width:80%"></span></div>
+      <div class="pet-label">
+        <div id="pet-name">Mochi</div>
+        <div class="pet-level-chip">Lv.<span id="pet-level">1</span> - <span id="pet-xp">0</span>XP</div>
       </div>
-      <div class="action-edit-grid">
-        <input class="inp" id="pet-name-input" placeholder="Tên pet" maxlength="18">
-        <select class="inp" id="pet-type-select">
-          <option value="dog">Chó</option>
-          <option value="cat">Mèo</option>
-          <option value="bunny">Thỏ</option>
-          <option value="fox">Cáo</option>
-        </select>
-        <button class="tool-btn" onclick="savePetDesign()">Lưu</button>
-      </div>
-      <div class="tool-row">
-        <button class="tool-btn" onclick="petAction('feed')">Cho ăn</button>
-        <button class="tool-btn" onclick="petAction('play')">Chơi</button>
-        <button class="tool-btn" onclick="petAction('pet')">Vuốt ve</button>
+      <div class="pet-controls">
+        <div class="pet-meta">
+          <div>Mood: <span id="pet-mood" class="presence-lbl">curious</span></div>
+        </div>
+        <div class="pet-bars">
+          <div class="presence-lbl">Tình cảm</div><div class="mini-bar"><span id="pet-affection" style="width:20%"></span></div>
+          <div class="presence-lbl">Năng lượng</div><div class="mini-bar"><span id="pet-energy" style="width:80%"></span></div>
+        </div>
+        <div class="action-edit-grid" style="grid-template-columns: 1fr 1fr 0.8fr;">
+          <input class="inp" id="pet-name-input" placeholder="Tên" maxlength="18">
+          <select class="inp" id="pet-type-select">
+            <option value="dog">Chó</option>
+            <option value="cat">Mèo</option>
+            <option value="bunny">Thỏ</option>
+            <option value="fox">Cáo</option>
+          </select>
+          <button class="tool-btn" onclick="savePetDesign()">Lưu</button>
+        </div>
+        <div class="tool-row">
+          <button class="tool-btn" onclick="petAction('feed')">Cho ăn</button>
+          <button class="tool-btn" onclick="petAction('play')">Chơi</button>
+          <button class="tool-btn" onclick="petAction('pet')">Vuốt ve</button>
+        </div>
       </div>
     </div>
 
@@ -662,12 +682,12 @@ const ACTION_META = {
 };
 
 const ROOM_TEMPLATES = [
-  { templateId: 'night-sky', name: 'Night', bg: '#0f0617', surface: '#1a0d2e', surface2: '#241240', pink: '#ff5fa0', purple: '#c47cff', blue: '#6ec6ff', particles: 'hearts' },
-  { templateId: 'sunset-date', name: 'Sunset', bg: '#180b18', surface: '#2a1230', surface2: '#431b3d', pink: '#ff7aa8', purple: '#ffb86b', blue: '#ffd6a5', particles: 'flowers' },
-  { templateId: 'ocean', name: 'Ocean', bg: '#051923', surface: '#0b2a3a', surface2: '#123d55', pink: '#5eead4', purple: '#38bdf8', blue: '#7dd3fc', particles: 'bubbles' },
-  { templateId: 'garden', name: 'Garden', bg: '#07170f', surface: '#10251a', surface2: '#173722', pink: '#f9a8d4', purple: '#86efac', blue: '#bbf7d0', particles: 'flowers' },
-  { templateId: 'pixel-love', name: 'Pixel', bg: '#120b24', surface: '#21153d', surface2: '#302056', pink: '#ff4fd8', purple: '#8b5cf6', blue: '#22d3ee', particles: 'stars' },
-  { templateId: 'minimal', name: 'Minimal', bg: '#101014', surface: '#1a1a22', surface2: '#242430', pink: '#f472b6', purple: '#a78bfa', blue: '#93c5fd', particles: 'none' }
+  { templateId: 'night-sky', name: 'Night', bg: '#0f0617', surface: '#1a0d2e', surface2: '#241240', pink: '#ff5fa0', purple: '#c47cff', blue: '#6ec6ff', text: '#f0e6ff', muted: '#9b7ec8', particles: 'hearts' },
+  { templateId: 'sunset-date', name: 'Sunset', bg: '#2a0a18', surface: '#3d1222', surface2: '#5c1a32', pink: '#ff4d6d', purple: '#ff8fa3', blue: '#ffb3c6', text: '#ffe5ec', muted: '#ffb3c6', particles: 'flowers' },
+  { templateId: 'ocean', name: 'Ocean', bg: '#001220', surface: '#00293d', surface2: '#004666', pink: '#48cae4', purple: '#00b4d8', blue: '#0077b6', text: '#caf0f8', muted: '#90e0ef', particles: 'bubbles' },
+  { templateId: 'forest', name: 'Forest', bg: '#0d1f15', surface: '#163625', surface2: '#1f4d36', pink: '#80ed99', purple: '#57cc99', blue: '#38a3a5', text: '#c7f9cc', muted: '#80ed99', particles: 'leaves' },
+  { templateId: 'cyberpunk', name: 'Cyber', bg: '#050505', surface: '#141414', surface2: '#292929', pink: '#f72585', purple: '#b5179e', blue: '#7209b7', text: '#4cc9f0', muted: '#4361ee', particles: 'stars' },
+  { templateId: 'light-love', name: 'Light', bg: '#fff0f3', surface: '#ffccd5', surface2: '#ffb3c1', pink: '#ff4d6d', purple: '#c9184a', blue: '#800f2f', text: '#590d22', muted: '#a4133c', particles: 'hearts' }
 ];
 
 const DEFAULT_ACTIONS = [
@@ -723,6 +743,7 @@ function applyRoomState(room) {
   applyTheme(S.theme);
   renderTemplates();
   renderActions();
+  renderCurrentActions();
   renderPet();
   updateStats();
   fetchEvents();
@@ -742,6 +763,8 @@ function applyTheme(theme) {
   root.style.setProperty('--pink2', theme.pink || '#ff85b8');
   root.style.setProperty('--purple', theme.purple || '#c47cff');
   root.style.setProperty('--blue', theme.blue || '#6ec6ff');
+  if (theme.text) root.style.setProperty('--text', theme.text);
+  if (theme.muted) root.style.setProperty('--muted', theme.muted);
   renderStageBackground(theme.background);
 }
 
@@ -861,15 +884,37 @@ async function addCustomAction() {
   } catch (error) { showToast(error.message); }
 }
 
+function renderCurrentActions() {
+  const list = document.getElementById('current-actions-list');
+  if (!list) return;
+  list.innerHTML = S.actions.map((a, i) => `
+    <div style="background:var(--bg); border:1px solid var(--border); padding:4px 8px; border-radius:8px; display:flex; align-items:center; gap:4px;">
+      <span>${a.emoji}</span> <span style="font-size:0.75rem">${escapeHtml(a.label)}</span>
+      <button onclick="removeAction(${i})" style="background:none; border:none; color:var(--pink); cursor:pointer; font-weight:bold; margin-left:4px;">&times;</button>
+    </div>
+  `).join('');
+}
+
+async function removeAction(index) {
+  if (S.actions.length <= 1) {
+    showToast('Phải giữ lại ít nhất 1 hành động chứ!');
+    return;
+  }
+  const next = S.actions.filter((_, i) => i !== index);
+  try {
+    const data = await apiPost(API.rooms, { type: 'actions', roomId: S.roomId, actions: next });
+    applyRoomState(data.room);
+    showToast('Đã xoá hành động');
+  } catch (error) { showToast(error.message); }
+}
+
 function renderPet() {
   if (!S.pet) return;
-  const petEl = document.getElementById('room-pet');
-  if (!petEl) return;
-  const petIcons = { dog: '🐶', cat: '🐱', bunny: '🐰', fox: '🦊', heartbun: '💞' };
-  petEl.textContent = petIcons[S.pet.type] || petIcons.heartbun;
-  petEl.className = 'pet ' + (S.pet.mood || 'curious');
+  const widget = document.getElementById('pet-widget');
+  if (!widget) return;
+  widget.setAttribute('data-type', S.pet.type || 'dog');
   document.getElementById('pet-name').textContent = S.pet.name || 'Mochi';
-  document.getElementById('pet-mood').textContent = 'Mood: ' + (S.pet.mood || 'curious');
+  document.getElementById('pet-mood').textContent = S.pet.mood || 'curious';
   document.getElementById('pet-level').textContent = S.pet.level || 1;
   document.getElementById('pet-xp').textContent = S.pet.xp || 0;
   document.getElementById('pet-affection').style.width = Math.min(100, S.pet.affection || 0) + '%';
@@ -1348,6 +1393,7 @@ Object.assign(window, {
   holdEnd,
   sendConfiguredAction,
   addCustomAction,
+  removeAction,
   saveTheme,
   uploadBackground,
   petAction,

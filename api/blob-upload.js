@@ -37,6 +37,14 @@ module.exports = async function handler(req, res) {
           addRandomSuffix: true,
           tokenPayload: JSON.stringify({ roomId, contentType, size })
         };
+      },
+      onUploadCompleted: async ({ blob, tokenPayload }) => {
+        try {
+          const payload = JSON.parse(tokenPayload || '{}');
+          console.log(`Upload completed for room ${payload.roomId}: ${blob.url}`);
+        } catch (err) {
+          console.error('Failed to handle upload completion', err);
+        }
       }
     });
 
