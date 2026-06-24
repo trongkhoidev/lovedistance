@@ -97,16 +97,16 @@ module.exports = async function handler(req, res) {
         UPDATE rooms
         SET counts = jsonb_set(
               COALESCE(counts, '{}'::jsonb),
-              ARRAY[${key}],
+              ARRAY[${key}::text],
               to_jsonb(COALESCE((counts->>${key})::integer, 0) + 1),
               true
             ),
             total = total + 1,
             activities = jsonb_build_array(
               jsonb_build_object(
-                'emoji', ${emoji},
-                'message', ${message},
-                'createdAt', ${new Date().toISOString()}
+                'emoji', ${emoji}::text,
+                'message', ${message}::text,
+                'createdAt', ${new Date().toISOString()}::text
               )
             ) || COALESCE(activities, '[]'::jsonb),
             updated_at = NOW()
