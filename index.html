@@ -298,6 +298,37 @@ body {
   transition: width 0.05s linear; border-radius: 0 0 0 16px;
 }
 
+/* Pet + customize */
+.pet-card { position: relative; overflow: hidden; min-height: 170px; }
+.pet-stage {
+  height: 88px; background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+  border-radius: 14px; position: relative; margin-bottom: 14px;
+}
+.pet {
+  position: absolute; left: 12%; bottom: 12px; font-size: 2.6rem;
+  animation: petWalk 7s ease-in-out infinite, petBob 1.6s ease-in-out infinite;
+}
+.pet.happy, .pet.excited, .pet.playful, .pet.loved { filter: drop-shadow(0 0 14px rgba(255,133,184,0.75)); }
+@keyframes petWalk { 0%,100%{left:10%} 50%{left:76%} }
+@keyframes petBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+.pet-meta { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.pet-name { font-weight: 900; color: var(--pink2); }
+.pet-bars { display: grid; gap: 6px; margin-top: 10px; }
+.mini-bar { height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+.mini-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--pink), var(--purple)); }
+.tool-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.tool-btn {
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  border-radius: 10px; padding: 9px; font-family: 'Nunito', sans-serif; font-weight: 800; cursor: pointer;
+}
+.template-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.template-btn {
+  border: 1px solid var(--border); border-radius: 12px; min-height: 58px; cursor: pointer;
+  color: #fff; font-weight: 900; font-family: 'Nunito', sans-serif; padding: 8px;
+}
+.action-edit-grid { display: grid; grid-template-columns: 0.7fr 1.2fr 1fr; gap: 8px; margin-top: 10px; }
+.action-edit-grid .inp { padding: 9px 10px; font-size: 0.85rem; }
+
 /* Stats */
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat-item { background: var(--bg); border-radius: 12px; padding: 14px; text-align: center; }
@@ -487,56 +518,43 @@ body {
       </div>
     </div>
 
+    <!-- Pet -->
+    <div class="card pet-card">
+      <div class="card-title">🐾 Pet của Room</div>
+      <div class="pet-stage"><div class="pet" id="room-pet">💞</div></div>
+      <div class="pet-meta">
+        <div><div class="pet-name" id="pet-name">Mochi</div><div class="presence-lbl" id="pet-mood">curious</div></div>
+        <div style="text-align:right"><div class="pet-name">Lv. <span id="pet-level">1</span></div><div class="presence-lbl"><span id="pet-xp">0</span> XP</div></div>
+      </div>
+      <div class="pet-bars">
+        <div class="presence-lbl">Tình cảm</div><div class="mini-bar"><span id="pet-affection" style="width:20%"></span></div>
+        <div class="presence-lbl">Năng lượng</div><div class="mini-bar"><span id="pet-energy" style="width:80%"></span></div>
+      </div>
+      <div class="tool-row">
+        <button class="tool-btn" onclick="petAction('feed')">Cho ăn</button>
+        <button class="tool-btn" onclick="petAction('play')">Chơi</button>
+        <button class="tool-btn" onclick="petAction('pet')">Vuốt ve</button>
+      </div>
+    </div>
+
+    <!-- Customize -->
+    <div class="card">
+      <div class="card-title">🎨 Tùy chỉnh Room</div>
+      <div class="template-grid" id="template-grid"></div>
+      <div class="action-edit-grid">
+        <input class="inp" id="custom-emoji" placeholder="Emoji" maxlength="4">
+        <input class="inp" id="custom-label" placeholder="Tên hành động" maxlength="18">
+        <button class="tool-btn" onclick="addCustomAction()">Thêm</button>
+      </div>
+      <p class="presence-lbl" style="margin-top:8px">Template và hành động custom sẽ lưu vào DB của room.</p>
+    </div>
+
     <!-- Actions -->
     <div class="card">
       <div class="card-title">💌 Gửi cảm xúc cho người yêu</div>
-      <div class="actions-grid">
-
-        <div class="action-btn action-hold-hand" id="ab-hold-hand"
-          onmousedown="holdStart('hold-hand')" onmouseup="holdEnd('hold-hand')" ontouchstart="holdStart('hold-hand')" ontouchend="holdEnd('hold-hand')">
-          <div class="hold-bar" id="bar-hold-hand"></div>
-          <span class="action-emoji">🤝</span>
-          <span class="action-label">Nắm tay</span>
-          <span class="action-count" id="cnt-hold-hand">0 lần</span>
-        </div>
-
-        <div class="action-btn action-kiss" id="ab-kiss"
-          onmousedown="holdStart('kiss')" onmouseup="holdEnd('kiss')" ontouchstart="holdStart('kiss')" ontouchend="holdEnd('kiss')">
-          <div class="hold-bar" id="bar-kiss"></div>
-          <span class="action-emoji">💋</span>
-          <span class="action-label">Hôn</span>
-          <span class="action-count" id="cnt-kiss">0 lần</span>
-        </div>
-
-        <div class="action-btn action-hug" id="ab-hug"
-          onmousedown="holdStart('hug')" onmouseup="holdEnd('hug')" ontouchstart="holdStart('hug')" ontouchend="holdEnd('hug')">
-          <div class="hold-bar" id="bar-hug"></div>
-          <span class="action-emoji">🤗</span>
-          <span class="action-label">Ôm</span>
-          <span class="action-count" id="cnt-hug">0 lần</span>
-        </div>
-
-        <div class="action-btn action-heart" id="ab-heart" onclick="doAction('heart','❤️','❤️ Bắn tim cho bạn!')">
-          <span class="action-emoji">❤️</span>
-          <span class="action-label">Bắn tim</span>
-          <span class="action-count" id="cnt-heart">0 lần</span>
-        </div>
-
-        <div class="action-btn action-miss" id="ab-miss" onclick="doAction('miss','🥺','🥺 Nhớ bạn lắm!')">
-          <span class="action-emoji">🥺</span>
-          <span class="action-label">Nhớ lắm</span>
-          <span class="action-count" id="cnt-miss">0 lần</span>
-        </div>
-
-        <div class="action-btn action-angry" id="ab-angry" onclick="doAction('angry','😤','😤 Giận rồi đó nghe!')">
-          <span class="action-emoji">😤</span>
-          <span class="action-label">Giận rồi</span>
-          <span class="action-count" id="cnt-angry">0 lần</span>
-        </div>
-
-      </div>
+      <div class="actions-grid" id="actions-grid"></div>
       <p style="font-size:0.72rem;color:var(--muted);margin-top:12px;text-align:center;">
-        💡 Giữ nút Nắm tay / Hôn / Ôm để gửi — thả ra để kết thúc
+        💡 Một số hành động có thể giữ nút để gửi — thả ra để kết thúc
       </p>
     </div>
 
@@ -596,11 +614,29 @@ const ACTION_META = {
   angry: { emoji: '😤', message: () => '😤 Giận rồi đó nghe!', btn: null, burst: ['😤','💗','✨'] }
 };
 
+const ROOM_TEMPLATES = [
+  { templateId: 'night-sky', name: 'Night', bg: '#0f0617', surface: '#1a0d2e', surface2: '#241240', pink: '#ff5fa0', purple: '#c47cff', blue: '#6ec6ff', particles: 'hearts' },
+  { templateId: 'sunset-date', name: 'Sunset', bg: '#180b18', surface: '#2a1230', surface2: '#431b3d', pink: '#ff7aa8', purple: '#ffb86b', blue: '#ffd6a5', particles: 'flowers' },
+  { templateId: 'ocean', name: 'Ocean', bg: '#051923', surface: '#0b2a3a', surface2: '#123d55', pink: '#5eead4', purple: '#38bdf8', blue: '#7dd3fc', particles: 'bubbles' },
+  { templateId: 'garden', name: 'Garden', bg: '#07170f', surface: '#10251a', surface2: '#173722', pink: '#f9a8d4', purple: '#86efac', blue: '#bbf7d0', particles: 'flowers' },
+  { templateId: 'pixel-love', name: 'Pixel', bg: '#120b24', surface: '#21153d', surface2: '#302056', pink: '#ff4fd8', purple: '#8b5cf6', blue: '#22d3ee', particles: 'stars' },
+  { templateId: 'minimal', name: 'Minimal', bg: '#101014', surface: '#1a1a22', surface2: '#242430', pink: '#f472b6', purple: '#a78bfa', blue: '#93c5fd', particles: 'none' }
+];
+
+const DEFAULT_ACTIONS = [
+  { key: 'hold-hand', label: 'Nắm tay', emoji: '🤝', effect: 'burst', hold: true, message: '{name} đang nắm tay bạn!' },
+  { key: 'kiss', label: 'Hôn', emoji: '💋', effect: 'kiss', hold: true, message: '{name} gửi bạn một nụ hôn!' },
+  { key: 'hug', label: 'Ôm', emoji: '🤗', effect: 'hug', hold: true, message: '{name} đang ôm bạn!' },
+  { key: 'heart', label: 'Bắn tim', emoji: '❤️', effect: 'heart', hold: false, message: '{name} bắn tim cho bạn!' },
+  { key: 'miss', label: 'Nhớ lắm', emoji: '🥺', effect: 'soft', hold: false, message: '{name}: Nhớ bạn lắm!' },
+  { key: 'angry', label: 'Giận rồi', emoji: '😤', effect: 'shake', hold: false, message: '{name}: Giận rồi đó nghe!' }
+];
+
 const S = {
   clientId: getClientId(), role: '', myName: '', partnerName: '', roomId: '', genId: '',
   syncIv: null, waitingIv: null, starRating: 0, connectedAt: null, lastHeartbeatAt: 0,
   counts: { 'hold-hand': 0, kiss: 0, hug: 0, heart: 0, miss: 0, angry: 0 },
-  total: 0,
+  total: 0, actions: DEFAULT_ACTIONS, theme: ROOM_TEMPLATES[0], pet: null,
   holdIvs: {}, holdProgs: {}
 };
 
@@ -620,6 +656,9 @@ function applyRoomState(room) {
   S.counts = { ...S.counts, ...(room.counts || {}) };
   S.total = room.total || 0;
   S.connectedAt = room.connectedAt || S.connectedAt;
+  S.actions = room.actions && room.actions.length ? room.actions : DEFAULT_ACTIONS;
+  S.theme = resolveTheme(room);
+  S.pet = room.pet || S.pet;
   if (room.creatorClientId === S.clientId) {
     S.role = 'creator';
     S.myName = room.creatorName || S.myName;
@@ -634,8 +673,99 @@ function applyRoomState(room) {
   document.getElementById('my-name-disp').textContent = S.myName || 'Bạn';
   if (S.partnerName) document.getElementById('partner-name-disp').textContent = S.partnerName;
   updatePresence(room);
+  applyTheme(S.theme);
+  renderTemplates();
+  renderActions();
+  renderPet();
   updateStats();
   renderActivities(room.activities || []);
+}
+
+function resolveTheme(room) {
+  const sessionValid = room.sessionThemeConfig && (!room.sessionThemeExpiresAt || new Date(room.sessionThemeExpiresAt).getTime() > Date.now());
+  return { ...ROOM_TEMPLATES[0], ...(room.themeConfig || {}), ...(sessionValid ? room.sessionThemeConfig : {}) };
+}
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  root.style.setProperty('--bg', theme.bg || '#0f0617');
+  root.style.setProperty('--surface', theme.surface || '#1a0d2e');
+  root.style.setProperty('--surface2', theme.surface2 || '#241240');
+  root.style.setProperty('--pink', theme.pink || '#ff5fa0');
+  root.style.setProperty('--pink2', theme.pink || '#ff85b8');
+  root.style.setProperty('--purple', theme.purple || '#c47cff');
+  root.style.setProperty('--blue', theme.blue || '#6ec6ff');
+}
+
+function renderTemplates() {
+  const grid = document.getElementById('template-grid');
+  if (!grid || grid.children.length) return;
+  grid.innerHTML = ROOM_TEMPLATES.map(t => `<button class="template-btn" style="background:linear-gradient(135deg,${t.bg},${t.purple})" onclick="saveTheme('${t.templateId}', true)">${t.name}</button>`).join('');
+}
+
+async function saveTheme(templateId, persist) {
+  const theme = ROOM_TEMPLATES.find(t => t.templateId === templateId) || ROOM_TEMPLATES[0];
+  try {
+    const data = await apiPost(API.rooms, { type: 'theme', roomId: S.roomId, themeConfig: theme, persist });
+    applyRoomState(data.room);
+    showToast('Đã lưu giao diện room');
+  } catch (error) { showToast(error.message); }
+}
+
+function renderActions() {
+  const grid = document.getElementById('actions-grid');
+  if (!grid) return;
+  grid.innerHTML = S.actions.map(a => {
+    const down = a.hold ? `onmousedown="holdStart('${a.key}')" onmouseup="holdEnd('${a.key}')" ontouchstart="holdStart('${a.key}')" ontouchend="holdEnd('${a.key}')"` : `onclick="sendConfiguredAction('${a.key}')"`;
+    const bar = a.hold ? `<div class="hold-bar" id="bar-${a.key}"></div>` : '';
+    return `<div class="action-btn action-${a.effect || 'burst'}" id="ab-${a.key}" ${down}>${bar}<span class="action-emoji">${a.emoji}</span><span class="action-label">${escapeHtml(a.label)}</span><span class="action-count" id="cnt-${a.key}">0 lần</span></div>`;
+  }).join('');
+}
+
+function getAction(key) {
+  return S.actions.find(a => a.key === key) || DEFAULT_ACTIONS.find(a => a.key === key) || { key, label: key, emoji: '💕', message: '{name} gửi yêu thương' };
+}
+
+function sendConfiguredAction(key) {
+  const action = getAction(key);
+  doAction(action.key, action.emoji, action.message.replace('{name}', S.myName));
+}
+
+async function addCustomAction() {
+  const emoji = document.getElementById('custom-emoji').value.trim() || '💕';
+  const label = document.getElementById('custom-label').value.trim();
+  if (!label) { showToast('Nhập tên hành động trước nhé'); return; }
+  const key = 'custom-' + Date.now().toString(36);
+  const next = [...S.actions, { key, label, emoji, effect: 'burst', hold: false, message: '{name} gửi ' + emoji }].slice(0, 9);
+  try {
+    const data = await apiPost(API.rooms, { type: 'actions', roomId: S.roomId, actions: next });
+    document.getElementById('custom-emoji').value = '';
+    document.getElementById('custom-label').value = '';
+    applyRoomState(data.room);
+    showToast('Đã thêm hành động');
+  } catch (error) { showToast(error.message); }
+}
+
+function renderPet() {
+  if (!S.pet) return;
+  const petEl = document.getElementById('room-pet');
+  if (!petEl) return;
+  petEl.textContent = S.pet.level >= 10 ? '💖' : (S.pet.level >= 5 ? '🐰' : '💞');
+  petEl.className = 'pet ' + (S.pet.mood || 'curious');
+  document.getElementById('pet-name').textContent = S.pet.name || 'Mochi';
+  document.getElementById('pet-mood').textContent = 'Mood: ' + (S.pet.mood || 'curious');
+  document.getElementById('pet-level').textContent = S.pet.level || 1;
+  document.getElementById('pet-xp').textContent = S.pet.xp || 0;
+  document.getElementById('pet-affection').style.width = Math.min(100, S.pet.affection || 0) + '%';
+  document.getElementById('pet-energy').style.width = Math.min(100, S.pet.energy || 0) + '%';
+}
+
+async function petAction(petActionType) {
+  try {
+    const data = await apiPost(API.rooms, { type: 'pet', roomId: S.roomId, petAction: petActionType });
+    applyRoomState(data.room);
+    showToast('Pet vui hơn rồi đó');
+  } catch (error) { showToast(error.message); }
 }
 
 function getPartnerPresence(room) {
@@ -677,6 +807,10 @@ function formatDateTime(value) {
     day: '2-digit',
     month: '2-digit'
   });
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
 
 function getClientId() {
@@ -847,10 +981,7 @@ function holdEnd(key) {
   btn.classList.remove('holding');
   clearInterval(S.holdIvs[key]);
   setTimeout(() => { bar.style.width = '0%'; }, 400);
-  const meta = ACTION_META[key] || { emoji: '💕', message: () => '' };
-  const e = meta.emoji;
-  const msg = meta.message(S.myName);
-  doAction(key, e, msg);
+  sendConfiguredAction(key);
 }
 
 async function doAction(key, emoji, msg) {
