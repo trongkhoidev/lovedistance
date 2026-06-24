@@ -21,7 +21,9 @@ async function initDb() {
     CREATE TABLE IF NOT EXISTS rooms (
       room_id TEXT PRIMARY KEY,
       creator_name TEXT,
+      creator_client_id TEXT,
       partner_name TEXT,
+      partner_client_id TEXT,
       counts JSONB NOT NULL DEFAULT '{}'::jsonb,
       total INTEGER NOT NULL DEFAULT 0,
       session_seconds INTEGER NOT NULL DEFAULT 0,
@@ -30,6 +32,8 @@ async function initDb() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+  await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS creator_client_id TEXT`;
+  await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS partner_client_id TEXT`;
   await db`
     CREATE TABLE IF NOT EXISTS feedback (
       id BIGSERIAL PRIMARY KEY,
@@ -47,7 +51,9 @@ function normalizeRoom(row) {
   return {
     roomId: row.room_id,
     creatorName: row.creator_name,
+    creatorClientId: row.creator_client_id,
     partnerName: row.partner_name,
+    partnerClientId: row.partner_client_id,
     counts: row.counts || {},
     total: row.total || 0,
     sessionSeconds: row.session_seconds || 0,

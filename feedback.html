@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoveDistance Feedback</title>
+<style>
+body { margin: 0; font-family: system-ui, sans-serif; background: #0f0617; color: #f0e6ff; }
+main { max-width: 900px; margin: 0 auto; padding: 32px 18px; }
+h1 { margin: 0 0 18px; color: #ff85b8; }
+.item { border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 14px; margin-bottom: 10px; background: #1a0d2e; }
+.meta { color: #9b7ec8; font-size: 13px; margin-bottom: 8px; }
+.empty { color: #9b7ec8; }
+</style>
+</head>
+<body>
+<main>
+  <h1>LoveDistance Feedback</h1>
+  <div id="list" class="empty">Đang tải góp ý...</div>
+</main>
+<script>
+async function loadFeedback() {
+  const list = document.getElementById('list');
+  try {
+    const res = await fetch('/api/feedback?limit=100');
+    const data = await res.json();
+    const items = data.feedback || [];
+    if (!items.length) {
+      list.textContent = 'Chưa có góp ý nào.';
+      return;
+    }
+    list.className = '';
+    list.innerHTML = items.map(item => {
+      const date = new Date(item.created_at).toLocaleString('vi-VN');
+      const stars = item.rating ? '⭐'.repeat(item.rating) : 'Chưa chấm sao';
+      return `<div class="item">
+        <div class="meta">Room ${item.room_id || 'N/A'} • ${stars} • ${date}</div>
+        <div>${escapeHtml(item.message || '(Không có nội dung)')}</div>
+      </div>`;
+    }).join('');
+  } catch (error) {
+    list.textContent = 'Không tải được góp ý.';
+  }
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[char]));
+}
+
+loadFeedback();
+</script>
+</body>
+</html>

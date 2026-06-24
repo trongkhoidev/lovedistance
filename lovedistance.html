@@ -577,7 +577,7 @@ const ACTION_META = {
 };
 
 const S = {
-  myName: '', partnerName: '', roomId: '', genId: '',
+  clientId: getClientId(), role: '', myName: '', partnerName: '', roomId: '', genId: '',
   sessionStart: null, timerIv: null, syncIv: null, waitingIv: null, starRating: 0,
   counts: { 'hold-hand': 0, kiss: 0, hug: 0, heart: 0, miss: 0, angry: 0 },
   total: 0,
@@ -599,12 +599,31 @@ function applyRoomState(room) {
   if (!room) return;
   S.counts = { ...S.counts, ...(room.counts || {}) };
   S.total = room.total || 0;
-  if (room.creatorName && !S.myName) S.myName = room.creatorName;
-  const otherName = room.creatorName === S.myName ? room.partnerName : room.creatorName;
-  if (otherName) S.partnerName = otherName;
+  if (room.creatorClientId === S.clientId) {
+    S.role = 'creator';
+    S.myName = room.creatorName || S.myName;
+    S.partnerName = room.partnerName || 'Người yêu';
+  } else if (room.partnerClientId === S.clientId) {
+    S.role = 'partner';
+    S.myName = room.partnerName || S.myName;
+    S.partnerName = room.creatorName || 'Người yêu';
+  } else if (!S.myName && room.creatorName) {
+    S.myName = room.creatorName;
+  }
+  document.getElementById('my-name-disp').textContent = S.myName || 'Bạn';
   if (S.partnerName) document.getElementById('partner-name-disp').textContent = S.partnerName;
   updateStats();
   renderActivities(room.activities || []);
+}
+
+function getClientId() {
+  const key = 'lvdist_client_id';
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = (crypto.randomUUID ? crypto.randomUUID() : 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2));
+    localStorage.setItem(key, id);
+  }
+  return id;
 }
 
 // ===== PARTICLES =====
@@ -669,7 +688,7 @@ async function createRoom() {
   S.myName = name; S.roomId = S.genId;
   saveCookie();
   try {
-    const data = await apiPost(API.rooms, { type: 'create', roomId: S.roomId, name: S.myName });
+    const data = await apiPost(API.rooms, { type: 'create', roomId: S.roomId, name: S.myName, clientId: S.clientId });
     applyRoomState(data.room);
   } catch (error) {
     showToast(error.message || 'Chưa kết nối được DB, chưa thể tạo room');
@@ -689,7 +708,7 @@ async function joinRoom() {
   S.myName = name; S.roomId = room; S.partnerName = 'Người Yêu 🥰';
   saveCookie();
   try {
-    const data = await apiPost(API.rooms, { type: 'join', roomId: S.roomId, name: S.myName });
+    const data = await apiPost(API.rooms, { type: 'join', roomId: S.roomId, name: S.myName, clientId: S.clientId });
     applyRoomState(data.room);
   } catch (error) {
     showToast(error.message || 'Chưa kết nối được DB, chưa thể vào room');
@@ -933,7 +952,7 @@ async function submitFeedback() {
 
 // ===== COOKIE =====
 function saveCookie() {
-  const d = { name: S.myName, lastRoom: S.roomId };
+  const d = { name: S.myName, lastRoom: S.roomId, clientId: S.clientId };
   document.cookie = 'lvdist=' + encodeURIComponent(JSON.stringify(d)) + '; max-age=2592000; path=/';
 }
 function loadCookie() {

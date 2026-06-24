@@ -42,13 +42,16 @@ module.exports = async function handler(req, res) {
 
     if (type === 'create') {
       const name = String(body.name || '').trim();
+      const clientId = String(body.clientId || '').trim();
       if (!name) return send(res, 400, { error: 'Missing name' });
+      if (!clientId) return send(res, 400, { error: 'Missing clientId' });
 
       const rows = await db`
-        INSERT INTO rooms (room_id, creator_name, counts, activities)
-        VALUES (${roomId}, ${name}, ${JSON.stringify(DEFAULT_COUNTS)}::jsonb, ${JSON.stringify(addActivity([], '🎉', name + ' đã tạo room'))}::jsonb)
+        INSERT INTO rooms (room_id, creator_name, creator_client_id, counts, activities)
+        VALUES (${roomId}, ${name}, ${clientId}, ${JSON.stringify(DEFAULT_COUNTS)}::jsonb, ${JSON.stringify(addActivity([], '🎉', name + ' đã tạo room'))}::jsonb)
         ON CONFLICT (room_id) DO UPDATE SET
           creator_name = COALESCE(rooms.creator_name, EXCLUDED.creator_name),
+          creator_client_id = COALESCE(rooms.creator_client_id, EXCLUDED.creator_client_id),
           updated_at = NOW()
         RETURNING *
       `;
@@ -57,17 +60,23 @@ module.exports = async function handler(req, res) {
 
     if (type === 'join') {
       const name = String(body.name || '').trim();
+      const clientId = String(body.clientId || '').trim();
       if (!name) return send(res, 400, { error: 'Missing name' });
+      if (!clientId) return send(res, 400, { error: 'Missing clientId' });
 
       const existing = await db`SELECT * FROM rooms WHERE room_id = ${roomId}`;
       if (!existing[0]) return send(res, 404, { error: 'Room không tồn tại' });
 
       const current = existing[0];
-      const partnerName = current.creator_name === name ? current.partner_name : name;
+      if (current.creator_client_id === clientId) return send(res, 200, { room: normalizeRoom(current) });
+      if (current.partner_client_id && current.partner_client_id !== clientId) {
+        return send(res, 409, { error: 'Room này đã đủ 2 người rồi' });
+      }
       const activities = addActivity(current.activities, '💞', name + ' đã vào room');
       const rows = await db`
         UPDATE rooms
-        SET partner_name = ${partnerName},
+        SET partner_name = ${name},
+            partner_client_id = ${clientId},
             activities = ${JSON.stringify(activities)}::jsonb,
             updated_at = NOW()
         WHERE room_id = ${roomId}
