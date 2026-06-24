@@ -578,7 +578,7 @@ const ACTION_META = {
 
 const S = {
   clientId: getClientId(), role: '', myName: '', partnerName: '', roomId: '', genId: '',
-  sessionStart: null, timerIv: null, syncIv: null, waitingIv: null, starRating: 0,
+  sessionStart: null, timerIv: null, syncIv: null, waitingIv: null, starRating: 0, connectedAt: null,
   counts: { 'hold-hand': 0, kiss: 0, hug: 0, heart: 0, miss: 0, angry: 0 },
   total: 0,
   holdIvs: {}, holdProgs: {}
@@ -599,6 +599,7 @@ function applyRoomState(room) {
   if (!room) return;
   S.counts = { ...S.counts, ...(room.counts || {}) };
   S.total = room.total || 0;
+  S.connectedAt = room.connectedAt || S.connectedAt;
   if (room.creatorClientId === S.clientId) {
     S.role = 'creator';
     S.myName = room.creatorName || S.myName;
@@ -720,7 +721,6 @@ async function joinRoom() {
 // ===== ENTER ROOM =====
 function enterRoom(isCreator) {
   if (S.waitingIv) clearInterval(S.waitingIv);
-  S.sessionStart = Date.now();
   document.getElementById('my-name-disp').textContent = S.myName;
   document.getElementById('partner-name-disp').textContent = S.partnerName;
   document.getElementById('header-room-id').textContent = 'ROOM: ' + S.roomId;
@@ -729,7 +729,6 @@ function enterRoom(isCreator) {
   showScreen('room');
   startTimer();
   startSync();
-  addActivity('🎉', (isCreator ? S.partnerName + ' đã vào room!' : 'Bạn đã vào room ' + S.roomId + ' thành công!'));
 }
 
 function waitForPartner() {
@@ -742,14 +741,15 @@ function waitForPartner() {
       applyRoomState(data.room);
       if (data.room && data.room.partnerName) enterRoom(true);
     } catch (error) {}
-  }, 3000);
+  }, 1500);
 }
 
 // ===== TIMER =====
 function startTimer() {
   if (S.timerIv) clearInterval(S.timerIv);
   S.timerIv = setInterval(() => {
-    const sec = Math.floor((Date.now() - S.sessionStart) / 1000);
+    const start = S.connectedAt ? new Date(S.connectedAt).getTime() : Date.now();
+    const sec = Math.max(0, Math.floor((Date.now() - start) / 1000));
     const h = String(Math.floor(sec/3600)).padStart(2,'0');
     const m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
     const s = String(sec%60).padStart(2,'0');
@@ -760,17 +760,15 @@ function startTimer() {
 function startSync() {
   if (S.syncIv) clearInterval(S.syncIv);
   S.syncIv = setInterval(async () => {
-    if (!S.roomId || !S.sessionStart) return;
-    const seconds = Math.floor((Date.now() - S.sessionStart) / 1000);
+    if (!S.roomId) return;
     try {
-      await apiPost(API.rooms, { type: 'session', roomId: S.roomId, seconds });
       const res = await fetch(API.rooms + '?roomId=' + encodeURIComponent(S.roomId));
       if (res.ok) {
         const data = await res.json();
         applyRoomState(data.room);
       }
     } catch (error) {}
-  }, 8000);
+  }, 1500);
 }
 
 // ===== HOLD ACTIONS =====
@@ -798,10 +796,7 @@ function holdEnd(key) {
 }
 
 async function doAction(key, emoji, msg) {
-  bump(key);
   playActionAnimation(key, emoji);
-  addActivity(emoji, msg || (S.myName + ' gửi ' + emoji));
-  showToast('Đã gửi tới ' + S.partnerName + ' 💕');
   if (navigator.vibrate) navigator.vibrate(120);
   try {
     const data = await apiPost(API.rooms, {
@@ -813,18 +808,15 @@ async function doAction(key, emoji, msg) {
       actorName: S.myName
     });
     applyRoomState(data.room);
+    showToast('Đã gửi tới ' + S.partnerName + ' 💕');
   } catch (error) {}
 }
 
-function bump(key) {
-  S.counts[key] = (S.counts[key] || 0) + 1;
-  S.total++;
-  const el = document.getElementById('cnt-' + key);
-  if (el) el.textContent = S.counts[key] + ' lần';
-  updateStats();
-}
-
 function updateStats() {
+  Object.keys(S.counts).forEach(key => {
+    const el = document.getElementById('cnt-' + key);
+    if (el) el.textContent = (S.counts[key] || 0) + ' lần';
+  });
   document.getElementById('st-total').textContent = S.total;
   document.getElementById('st-kiss').textContent = S.counts.kiss || 0;
   document.getElementById('st-hug').textContent = S.counts.hug || 0;
@@ -979,6 +971,7 @@ function leaveRoom() {
   if (S.syncIv) clearInterval(S.syncIv);
   if (S.waitingIv) clearInterval(S.waitingIv);
   S.sessionStart = null;
+  S.connectedAt = null;
   showScreen('entry');
   showToast('Đã thoát room 👋');
 }

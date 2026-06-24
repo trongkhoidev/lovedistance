@@ -27,6 +27,7 @@ async function initDb() {
       counts JSONB NOT NULL DEFAULT '{}'::jsonb,
       total INTEGER NOT NULL DEFAULT 0,
       session_seconds INTEGER NOT NULL DEFAULT 0,
+      connected_at TIMESTAMPTZ,
       activities JSONB NOT NULL DEFAULT '[]'::jsonb,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -34,6 +35,7 @@ async function initDb() {
   `;
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS creator_client_id TEXT`;
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS partner_client_id TEXT`;
+  await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS connected_at TIMESTAMPTZ`;
   await db`
     CREATE TABLE IF NOT EXISTS feedback (
       id BIGSERIAL PRIMARY KEY,
@@ -57,7 +59,8 @@ function normalizeRoom(row) {
     counts: row.counts || {},
     total: row.total || 0,
     sessionSeconds: row.session_seconds || 0,
-    activities: row.activities || [],
+    connectedAt: row.connected_at,
+    activities: Array.isArray(row.activities) ? row.activities.slice(0, 8) : [],
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };

@@ -77,6 +77,7 @@ module.exports = async function handler(req, res) {
         UPDATE rooms
         SET partner_name = ${name},
             partner_client_id = ${clientId},
+            connected_at = COALESCE(connected_at, NOW()),
             activities = ${JSON.stringify(activities)}::jsonb,
             updated_at = NOW()
         WHERE room_id = ${roomId}
@@ -92,15 +93,22 @@ module.exports = async function handler(req, res) {
       const existing = await db`SELECT * FROM rooms WHERE room_id = ${roomId}`;
       if (!existing[0]) return send(res, 404, { error: 'Room không tồn tại' });
 
-      const current = existing[0];
-      const counts = { ...DEFAULT_COUNTS, ...(current.counts || {}) };
-      counts[key] = (counts[key] || 0) + 1;
-      const activities = addActivity(current.activities, emoji, message);
       const rows = await db`
         UPDATE rooms
-        SET counts = ${JSON.stringify(counts)}::jsonb,
+        SET counts = jsonb_set(
+              COALESCE(counts, '{}'::jsonb),
+              ARRAY[${key}],
+              to_jsonb(COALESCE((counts->>${key})::integer, 0) + 1),
+              true
+            ),
             total = total + 1,
-            activities = ${JSON.stringify(activities)}::jsonb,
+            activities = jsonb_build_array(
+              jsonb_build_object(
+                'emoji', ${emoji},
+                'message', ${message},
+                'createdAt', ${new Date().toISOString()}
+              )
+            ) || COALESCE(activities, '[]'::jsonb),
             updated_at = NOW()
         WHERE room_id = ${roomId}
         RETURNING *
