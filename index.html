@@ -725,7 +725,6 @@ function applyRoomState(room) {
   renderActions();
   renderPet();
   updateStats();
-  renderActivities(room.activities || []);
   fetchEvents();
 }
 
@@ -1182,6 +1181,7 @@ function updateStats() {
 // ===== ACTIVITY =====
 function addActivity(emoji, text) {
   const log = document.getElementById('activity-log');
+  if (!log) return;
   const ph = document.getElementById('activity-placeholder');
   if (ph) ph.remove();
   const now = new Date();
@@ -1195,6 +1195,7 @@ function addActivity(emoji, text) {
 
 function renderActivities(items) {
   const log = document.getElementById('activity-log');
+  if (!log) return;
   log.innerHTML = '';
   if (!items.length) {
     log.innerHTML = '<li class="activity-item" id="activity-placeholder" style="color:var(--muted);justify-content:center;font-size:0.8rem">Chưa có hoạt động nào...</li>';
