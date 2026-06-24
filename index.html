@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoveDistance 💕</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Dancing+Script:wght@700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f0617;
+  --surface: #1a0d2e;
+  --surface2: #241240;
+  --border: rgba(255,255,255,0.08);
+  --pink: #ff5fa0;
+  --pink2: #ff85b8;
+  --purple: #c47cff;
+  --blue: #6ec6ff;
+  --text: #f0e6ff;
+  --muted: #9b7ec8;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.particle {
+  position: absolute;
+  opacity: 0;
+  animation: floatUp linear infinite;
+}
+@keyframes floatUp {
+  0% { transform: translateY(100vh) scale(0.5); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.2; }
+  100% { transform: translateY(-20px) scale(1.2); opacity: 0; }
+}
+
+.screen { display: none; min-height: 100vh; position: relative; z-index: 1; }
+.screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+
+/* ======== ENTRY ======== */
+#screen-entry {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(196,124,255,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 80%, rgba(255,95,160,0.15) 0%, transparent 60%);
+}
+
+.logo-title {
+  font-family: 'Dancing Script', cursive;
+  font-size: 3.2rem;
+  background: linear-gradient(135deg, #ff5fa0, #c47cff, #6ec6ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-align: center;
+  margin-bottom: 6px;
+}
+.logo-sub { text-align: center; color: var(--muted); font-size: 0.9rem; margin-bottom: 40px; }
+
+.entry-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 36px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.tabs {
+  display: flex;
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 28px;
+  gap: 4px;
+}
+.tab-btn {
+  flex: 1; padding: 10px; border: none; border-radius: 10px;
+  background: transparent; color: var(--muted);
+  font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 700; cursor: pointer;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  color: #fff; box-shadow: 0 0 20px rgba(255,95,160,0.4);
+}
+
+.input-group { margin-bottom: 16px; }
+.input-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.inp {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 16px; color: var(--text);
+  font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 600; outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.inp:focus { border-color: var(--pink); box-shadow: 0 0 0 3px rgba(255,95,160,0.15); }
+.inp::placeholder { color: rgba(155,126,200,0.5); }
+.inp-hint { font-size: 0.75rem; color: var(--muted); margin-top: 5px; }
+
+.btn-main {
+  width: 100%; padding: 14px; border: none; border-radius: 14px;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  color: #fff; font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 800;
+  cursor: pointer; margin-top: 8px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 0 20px rgba(255,95,160,0.4);
+}
+.btn-main:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,95,160,0.5); }
+.btn-main:active { transform: scale(0.98); }
+
+.room-id-display {
+  background: var(--bg); border: 1px dashed rgba(196,124,255,0.4);
+  border-radius: 12px; padding: 14px; text-align: center; margin-bottom: 16px; display: none; cursor: pointer;
+}
+.room-id-display .rid { font-size: 1.8rem; font-weight: 900; color: var(--purple); letter-spacing: 0.2em; }
+.room-id-display .rid-label { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+.btn-gen {
+  width: 100%; padding: 11px; border: 1px solid var(--purple); border-radius: 12px;
+  background: rgba(196,124,255,0.1); color: var(--purple);
+  font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 700;
+  cursor: pointer; margin-bottom: 12px; transition: all 0.2s;
+}
+.btn-gen:hover { background: rgba(196,124,255,0.2); }
+
+/* ======== WAITING ======== */
+#screen-waiting { background: var(--bg); }
+.waiting-card {
+  text-align: center; padding: 40px 28px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 24px; width: 100%; max-width: 420px;
+}
+.pulse-ring {
+  width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--purple);
+  margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.pulse-ring::before, .pulse-ring::after {
+  content: ''; position: absolute; border-radius: 50%; border: 2px solid var(--purple);
+  animation: ringPulse 2s ease-out infinite;
+}
+.pulse-ring::after { animation-delay: 0.8s; }
+@keyframes ringPulse {
+  0% { width: 80px; height: 80px; opacity: 0.8; }
+  100% { width: 180px; height: 180px; opacity: 0; }
+}
+.waiting-title { font-size: 1.3rem; font-weight: 800; margin: 16px 0 8px; }
+.waiting-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 12px; }
+.waiting-room-code {
+  display: inline-block; background: var(--bg);
+  border: 1px dashed rgba(196,124,255,0.5); border-radius: 12px;
+  padding: 12px 24px; font-size: 1.6rem; font-weight: 900; color: var(--purple);
+  letter-spacing: 0.25em; margin: 12px 0; cursor: pointer;
+}
+.copy-hint { font-size: 0.72rem; color: var(--muted); }
+.btn-cancel {
+  margin-top: 16px; padding: 10px 28px; border: 1px solid var(--border); border-radius: 10px;
+  background: transparent; color: var(--muted); font-family: 'Nunito', sans-serif;
+  font-weight: 700; cursor: pointer; font-size: 0.85rem;
+}
+
+/* ======== ROOM ======== */
+#screen-room {
+  justify-content: flex-start; padding: 0;
+  background:
+    radial-gradient(ellipse at 10% 0%, rgba(196,124,255,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 100%, rgba(255,95,160,0.08) 0%, transparent 50%);
+}
+
+.room-header {
+  width: 100%; padding: 14px 20px;
+  background: rgba(26,13,46,0.95); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 10;
+}
+.room-header-left { display: flex; align-items: center; gap: 12px; }
+.room-logo {
+  font-family: 'Dancing Script', cursive; font-size: 1.4rem;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.room-id-badge {
+  background: rgba(196,124,255,0.12); border: 1px solid rgba(196,124,255,0.3);
+  border-radius: 8px; padding: 4px 10px; font-size: 0.78rem; font-weight: 700;
+  color: var(--purple); cursor: pointer; transition: background 0.2s;
+}
+.room-id-badge:hover { background: rgba(196,124,255,0.25); }
+.partner-status { display: flex; align-items: center; gap: 8px; }
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: #666; transition: background 0.3s;
+}
+.status-dot.online { background: #4ade80; box-shadow: 0 0 6px #4ade80; animation: pg 2s infinite; }
+@keyframes pg { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.btn-leave {
+  padding: 6px 14px; border: 1px solid rgba(255,95,160,0.3); border-radius: 8px;
+  background: transparent; color: var(--pink); font-family: 'Nunito', sans-serif;
+  font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
+}
+.btn-leave:hover { background: rgba(255,95,160,0.1); }
+
+.room-body {
+  flex: 1; width: 100%; max-width: 600px; margin: 0 auto;
+  padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;
+}
+
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 20px;
+}
+.card-title {
+  font-size: 0.78rem; color: var(--muted); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px;
+}
+
+/* Couple */
+.couple-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+  padding: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.person-info { text-align: center; flex: 1; }
+.person-avatar {
+  width: 58px; height: 58px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 1.7rem;
+  margin: 0 auto 8px; border: 2px solid var(--pink);
+  box-shadow: 0 0 20px rgba(255,95,160,0.4);
+}
+.person-avatar.p2 { border-color: var(--purple); box-shadow: 0 0 20px rgba(196,124,255,0.4); }
+.person-name { font-weight: 800; font-size: 1rem; }
+.person-label { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+.heart-bridge { font-size: 2rem; animation: hb 1.5s ease-in-out infinite; }
+@keyframes hb { 0%,100%{transform:scale(1)} 50%{transform:scale(1.25)} }
+
+/* Timer */
+.timer-card {
+  background: linear-gradient(135deg, rgba(255,95,160,0.08), rgba(196,124,255,0.08));
+  border: 1px solid rgba(255,95,160,0.15); border-radius: 20px;
+  padding: 20px; text-align: center;
+}
+.timer-val { font-size: 2.2rem; font-weight: 900; color: var(--pink2); font-variant-numeric: tabular-nums; }
+.timer-lbl { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+/* Actions */
+.actions-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.action-btn {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 16px;
+  padding: 16px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+  user-select: none; -webkit-user-select: none;
+}
+.action-btn:hover { border-color: var(--pink); background: rgba(255,95,160,0.05); }
+.action-btn:active { transform: scale(0.95); }
+.action-btn.sent {
+  animation: actionPop 0.45s cubic-bezier(.2, 1.6, .4, 1);
+}
+.action-btn.sent::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.35);
+  animation: actionRipple 0.65s ease-out forwards;
+}
+.action-btn.action-kiss.sent { animation-name: kissPop; }
+.action-btn.action-hug.sent { animation-name: hugPulse; }
+.action-btn.action-miss.sent { animation-name: missSway; }
+.action-btn.action-angry.sent { animation-name: softShake; }
+.action-btn.holding {
+  border-color: var(--pink); background: rgba(255,95,160,0.12);
+  box-shadow: 0 0 20px rgba(255,95,160,0.4); animation: pact 1s ease-in-out infinite;
+}
+@keyframes pact { 0%,100%{box-shadow: 0 0 10px rgba(255,95,160,0.3)} 50%{box-shadow: 0 0 28px rgba(255,95,160,0.7)} }
+@keyframes actionPop { 0%{transform:scale(1)} 45%{transform:scale(1.12)} 100%{transform:scale(1)} }
+@keyframes actionRipple { from{opacity:0.8;transform:scale(0.86)} to{opacity:0;transform:scale(1.25)} }
+@keyframes kissPop { 0%{transform:rotate(0) scale(1)} 45%{transform:rotate(-4deg) scale(1.16)} 100%{transform:rotate(0) scale(1)} }
+@keyframes hugPulse { 0%,100%{transform:scale(1)} 35%{transform:scale(1.1)} 65%{transform:scale(1.04)} }
+@keyframes missSway { 0%,100%{transform:translateX(0)} 30%{transform:translateX(-4px)} 65%{transform:translateX(4px)} }
+@keyframes softShake { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-3deg)} 50%{transform:rotate(3deg)} 75%{transform:rotate(-2deg)} }
+.action-emoji { font-size: 2rem; }
+.action-label { font-size: 0.78rem; font-weight: 700; }
+.action-count { font-size: 0.68rem; color: var(--muted); }
+.hold-bar {
+  position: absolute; bottom: 0; left: 0; height: 3px;
+  background: linear-gradient(90deg, var(--pink), var(--purple));
+  transition: width 0.05s linear; border-radius: 0 0 0 16px;
+}
+
+/* Stats */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat-item { background: var(--bg); border-radius: 12px; padding: 14px; text-align: center; }
+.stat-val {
+  font-size: 1.6rem; font-weight: 900;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.stat-lbl { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+
+/* Activity */
+.activity-log { list-style: none; display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; }
+.activity-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: var(--bg); border-radius: 10px; font-size: 0.82rem;
+  animation: si 0.3s ease;
+}
+@keyframes si { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+.activity-time { color: var(--muted); font-size: 0.7rem; white-space: nowrap; }
+
+/* Feedback */
+.feedback-stars { display: flex; gap: 6px; margin: 10px 0; }
+.star-btn { background: none; border: none; font-size: 1.6rem; cursor: pointer; opacity: 0.3; transition: opacity 0.15s, transform 0.15s; }
+.star-btn.lit { opacity: 1; transform: scale(1.2); }
+.feedback-inp {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 14px; color: var(--text);
+  font-family: 'Nunito', sans-serif; font-size: 0.85rem; outline: none; resize: none; margin-top: 8px;
+}
+.btn-feedback {
+  margin-top: 10px; padding: 10px 22px; border: none; border-radius: 10px;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  color: #fff; font-family: 'Nunito', sans-serif; font-weight: 700; cursor: pointer; font-size: 0.85rem;
+}
+
+/* Popups */
+.incoming-popup {
+  position: fixed; top: 75px; left: 50%; transform: translateX(-50%);
+  background: linear-gradient(135deg, rgba(255,95,160,0.95), rgba(196,124,255,0.95));
+  border-radius: 16px; padding: 14px 28px; font-weight: 800; font-size: 1rem; color: #fff;
+  z-index: 100; display: none; text-align: center;
+  box-shadow: 0 8px 30px rgba(255,95,160,0.5);
+  animation: pi 0.3s ease;
+}
+@keyframes pi { from{opacity:0;transform:translateX(-50%) translateY(-10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+.float-heart {
+  position: fixed; pointer-events: none; z-index: 200; font-size: 1.5rem;
+  animation: fh 1.5s ease-out forwards;
+}
+@keyframes fh {
+  0% { transform: translateY(0) scale(0.5); opacity: 1; }
+  100% { transform: translateY(-130px) scale(1.6); opacity: 0; }
+}
+.love-burst {
+  position: fixed; pointer-events: none; z-index: 220; font-size: 1.35rem;
+  animation: loveBurst 1.15s ease-out forwards;
+}
+@keyframes loveBurst {
+  0% { transform: translate(0, 0) scale(0.5) rotate(0deg); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1.35) rotate(var(--rot)); opacity: 0; }
+}
+
+.toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  background: rgba(36,18,64,0.97); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 22px; font-size: 0.85rem; font-weight: 700; color: var(--text);
+  z-index: 300; display: none; backdrop-filter: blur(10px); white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<div class="particles" id="particles"></div>
+<div class="toast" id="toast"></div>
+<div class="incoming-popup" id="incoming-popup"></div>
+
+<!-- ====== ENTRY ====== -->
+<div class="screen active" id="screen-entry">
+  <div class="logo-title">LoveDistance 💕</div>
+  <p class="logo-sub">Kết nối trái tim — vượt mọi khoảng cách</p>
+
+  <div class="entry-box">
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-create" onclick="switchTab('create')">✨ Tạo Room</button>
+      <button class="tab-btn" id="tab-join" onclick="switchTab('join')">🔗 Vào Room</button>
+    </div>
+
+    <div id="panel-create">
+      <div class="input-group">
+        <div class="input-label">Tên của bạn</div>
+        <input class="inp" id="create-name" placeholder="Ví dụ: Linh 🌸" maxlength="20">
+        <div class="inp-hint">Tên này sẽ được lưu vào cookie để dùng lần sau</div>
+      </div>
+      <div class="room-id-display" id="generated-room" onclick="copyGeneratedId()">
+        <div class="rid" id="generated-rid">------</div>
+        <div class="rid-label">📋 Click để copy — gửi cho người yêu nhé!</div>
+      </div>
+      <button class="btn-gen" onclick="generateRoom()">🎲 Tạo mã Room ngẫu nhiên</button>
+      <button class="btn-main" onclick="createRoom()">Tạo Room & Chờ người yêu 💌</button>
+    </div>
+
+    <div id="panel-join" style="display:none">
+      <div class="input-group">
+        <div class="input-label">Tên của bạn</div>
+        <input class="inp" id="join-name" placeholder="Ví dụ: Minh 🦋" maxlength="20">
+      </div>
+      <div class="input-group">
+        <div class="input-label">Mã Room</div>
+        <input class="inp" id="join-room" placeholder="VD: ABC123" maxlength="8"
+          style="text-transform:uppercase;letter-spacing:0.2em;font-size:1.2rem;"
+          oninput="this.value=this.value.toUpperCase()">
+        <div class="inp-hint">Nhờ người yêu gửi mã 6 ký tự cho bạn</div>
+      </div>
+      <button class="btn-main" onclick="joinRoom()">Vào Room 💕</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== WAITING ====== -->
+<div class="screen" id="screen-waiting">
+  <div class="waiting-card">
+    <div class="pulse-ring"><span style="font-size:2rem">💕</span></div>
+    <div class="waiting-title">Đang chờ người yêu...</div>
+    <p class="waiting-sub">Gửi mã này cho người yêu của bạn:</p>
+    <div class="waiting-room-code" id="waiting-code" onclick="copyRoomId()">------</div>
+    <p class="copy-hint">👆 Click để copy mã</p>
+    <br>
+    <p class="waiting-sub" style="font-size:0.78rem;margin-top:8px;">
+      💡 Room sẽ tự mở khi người ấy nhập đúng mã
+    </p>
+    <button class="btn-cancel" onclick="cancelWaiting()">Huỷ</button>
+  </div>
+</div>
+
+<!-- ====== ROOM ====== -->
+<div class="screen" id="screen-room" style="display:none;flex-direction:column;justify-content:flex-start;padding:0">
+
+  <div class="room-header">
+    <div class="room-header-left">
+      <span class="room-logo">LoveDistance</span>
+      <span class="room-id-badge" onclick="copyRoomId()" id="header-room-id">ROOM: ----</span>
+    </div>
+    <div class="partner-status">
+      <div class="status-dot online"></div>
+      <span style="color:var(--muted);font-size:0.78rem" id="partner-status-label">Online</span>
+    </div>
+    <button class="btn-leave" onclick="leaveRoom()">Thoát 👋</button>
+  </div>
+
+  <div class="room-body">
+
+    <!-- Couple names -->
+    <div class="couple-card">
+      <div class="person-info">
+        <div class="person-avatar">😊</div>
+        <div class="person-name" id="my-name-disp">Bạn</div>
+        <div class="person-label">Bạn</div>
+      </div>
+      <span class="heart-bridge">❤️</span>
+      <div class="person-info">
+        <div class="person-avatar p2">🥰</div>
+        <div class="person-name" id="partner-name-disp">Người yêu</div>
+        <div class="person-label">Người yêu</div>
+      </div>
+    </div>
+
+    <!-- Timer -->
+    <div class="timer-card">
+      <div style="font-size:1.5rem;margin-bottom:6px">⏱️</div>
+      <div class="timer-val" id="session-timer">00:00:00</div>
+      <div class="timer-lbl">Thời gian online cùng nhau hôm nay</div>
+    </div>
+
+    <!-- Actions -->
+    <div class="card">
+      <div class="card-title">💌 Gửi cảm xúc cho người yêu</div>
+      <div class="actions-grid">
+
+        <div class="action-btn action-hold-hand" id="ab-hold-hand"
+          onmousedown="holdStart('hold-hand')" onmouseup="holdEnd('hold-hand')" ontouchstart="holdStart('hold-hand')" ontouchend="holdEnd('hold-hand')">
+          <div class="hold-bar" id="bar-hold-hand"></div>
+          <span class="action-emoji">🤝</span>
+          <span class="action-label">Nắm tay</span>
+          <span class="action-count" id="cnt-hold-hand">0 lần</span>
+        </div>
+
+        <div class="action-btn action-kiss" id="ab-kiss"
+          onmousedown="holdStart('kiss')" onmouseup="holdEnd('kiss')" ontouchstart="holdStart('kiss')" ontouchend="holdEnd('kiss')">
+          <div class="hold-bar" id="bar-kiss"></div>
+          <span class="action-emoji">💋</span>
+          <span class="action-label">Hôn</span>
+          <span class="action-count" id="cnt-kiss">0 lần</span>
+        </div>
+
+        <div class="action-btn action-hug" id="ab-hug"
+          onmousedown="holdStart('hug')" onmouseup="holdEnd('hug')" ontouchstart="holdStart('hug')" ontouchend="holdEnd('hug')">
+          <div class="hold-bar" id="bar-hug"></div>
+          <span class="action-emoji">🤗</span>
+          <span class="action-label">Ôm</span>
+          <span class="action-count" id="cnt-hug">0 lần</span>
+        </div>
+
+        <div class="action-btn action-heart" id="ab-heart" onclick="doAction('heart','❤️','❤️ Bắn tim cho bạn!')">
+          <span class="action-emoji">❤️</span>
+          <span class="action-label">Bắn tim</span>
+          <span class="action-count" id="cnt-heart">0 lần</span>
+        </div>
+
+        <div class="action-btn action-miss" id="ab-miss" onclick="doAction('miss','🥺','🥺 Nhớ bạn lắm!')">
+          <span class="action-emoji">🥺</span>
+          <span class="action-label">Nhớ lắm</span>
+          <span class="action-count" id="cnt-miss">0 lần</span>
+        </div>
+
+        <div class="action-btn action-angry" id="ab-angry" onclick="doAction('angry','😤','😤 Giận rồi đó nghe!')">
+          <span class="action-emoji">😤</span>
+          <span class="action-label">Giận rồi</span>
+          <span class="action-count" id="cnt-angry">0 lần</span>
+        </div>
+
+      </div>
+      <p style="font-size:0.72rem;color:var(--muted);margin-top:12px;text-align:center;">
+        💡 Giữ nút Nắm tay / Hôn / Ôm để gửi — thả ra để kết thúc
+      </p>
+    </div>
+
+    <!-- Room Stats -->
+    <div class="card">
+      <div class="card-title">📊 Thống kê Room — <span id="stat-room-id" style="color:var(--purple)"></span></div>
+      <div class="stats-grid">
+        <div class="stat-item"><div class="stat-val" id="st-total">0</div><div class="stat-lbl">Tổng tương tác</div></div>
+        <div class="stat-item"><div class="stat-val" id="st-kiss">0</div><div class="stat-lbl">Nụ hôn 💋</div></div>
+        <div class="stat-item"><div class="stat-val" id="st-hug">0</div><div class="stat-lbl">Cái ôm 🤗</div></div>
+        <div class="stat-item"><div class="stat-val" id="st-hand">0</div><div class="stat-lbl">Nắm tay 🤝</div></div>
+        <div class="stat-item"><div class="stat-val" id="st-heart">0</div><div class="stat-lbl">Bắn tim ❤️</div></div>
+        <div class="stat-item"><div class="stat-val" id="st-miss">0</div><div class="stat-lbl">Nhớ nhau 🥺</div></div>
+      </div>
+    </div>
+
+    <!-- Activity -->
+    <div class="card">
+      <div class="card-title">📜 Hoạt động gần đây</div>
+      <ul class="activity-log" id="activity-log">
+        <li class="activity-item" id="activity-placeholder" style="color:var(--muted);justify-content:center;font-size:0.8rem">Chưa có hoạt động nào...</li>
+      </ul>
+    </div>
+
+    <!-- Feedback -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title">💬 Góp ý cải thiện</div>
+      <div class="feedback-stars" id="fstars">
+        <button class="star-btn" onclick="rateStar(1)">⭐</button>
+        <button class="star-btn" onclick="rateStar(2)">⭐</button>
+        <button class="star-btn" onclick="rateStar(3)">⭐</button>
+        <button class="star-btn" onclick="rateStar(4)">⭐</button>
+        <button class="star-btn" onclick="rateStar(5)">⭐</button>
+      </div>
+      <p style="font-size:0.78rem;color:var(--muted)">Bạn muốn tính năng gì thêm?</p>
+      <textarea class="feedback-inp" id="feedback-text" rows="3"
+        placeholder="Ví dụ: Muốn có mini game đôi, muốn nghe nhạc cùng nhau..."></textarea>
+      <button class="btn-feedback" onclick="submitFeedback()">Gửi góp ý 💌</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ===== APP STATE =====
+const API = {
+  rooms: '/api/rooms',
+  feedback: '/api/feedback'
+};
+
+const ACTION_META = {
+  'hold-hand': { emoji: '🤝', message: name => name + ' đang nắm tay bạn!', btn: 'ab-hold-hand', burst: ['🤝','💕','✨'] },
+  kiss: { emoji: '💋', message: name => name + ' gửi bạn một nụ hôn!', btn: 'ab-kiss', burst: ['💋','💕','✨'] },
+  hug: { emoji: '🤗', message: name => name + ' đang ôm bạn!', btn: 'ab-hug', burst: ['🤗','💞','🌸'] },
+  heart: { emoji: '❤️', message: () => '❤️ Bắn tim cho bạn!', btn: null, burst: ['❤️','💖','💕'] },
+  miss: { emoji: '🥺', message: () => '🥺 Nhớ bạn lắm!', btn: null, burst: ['🥺','💧','💕'] },
+  angry: { emoji: '😤', message: () => '😤 Giận rồi đó nghe!', btn: null, burst: ['😤','💗','✨'] }
+};
+
+const S = {
+  myName: '', partnerName: '', roomId: '', genId: '',
+  sessionStart: null, timerIv: null, syncIv: null, waitingIv: null, starRating: 0,
+  counts: { 'hold-hand': 0, kiss: 0, hug: 0, heart: 0, miss: 0, angry: 0 },
+  total: 0,
+  holdIvs: {}, holdProgs: {}
+};
+
+async function apiPost(url, payload) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Không kết nối được server');
+  return data;
+}
+
+function applyRoomState(room) {
+  if (!room) return;
+  S.counts = { ...S.counts, ...(room.counts || {}) };
+  S.total = room.total || 0;
+  if (room.creatorName && !S.myName) S.myName = room.creatorName;
+  const otherName = room.creatorName === S.myName ? room.partnerName : room.creatorName;
+  if (otherName) S.partnerName = otherName;
+  if (S.partnerName) document.getElementById('partner-name-disp').textContent = S.partnerName;
+  updateStats();
+  renderActivities(room.activities || []);
+}
+
+// ===== PARTICLES =====
+const EMOJIS = ['💕','💖','✨','🌸','💫','💝','🌟','💓','🌺','⭐'];
+setInterval(() => {
+  const el = document.createElement('div');
+  el.className = 'particle';
+  el.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+  el.style.cssText = `left:${Math.random()*100}vw;font-size:${0.6+Math.random()*0.9}rem;animation-duration:${7+Math.random()*8}s;animation-delay:${Math.random()}s`;
+  document.getElementById('particles').appendChild(el);
+  setTimeout(() => el.remove(), 18000);
+}, 1200);
+
+// ===== SCREEN =====
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => { s.style.display = 'none'; s.classList.remove('active'); });
+  const el = document.getElementById('screen-' + name);
+  el.style.display = 'flex';
+  el.classList.add('active');
+}
+
+// ===== TABS =====
+function switchTab(t) {
+  document.getElementById('tab-create').classList.toggle('active', t === 'create');
+  document.getElementById('tab-join').classList.toggle('active', t === 'join');
+  document.getElementById('panel-create').style.display = t === 'create' ? '' : 'none';
+  document.getElementById('panel-join').style.display = t === 'join' ? '' : 'none';
+}
+
+// ===== ROOM ID =====
+function genId() {
+  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:6}, () => c[Math.floor(Math.random()*c.length)]).join('');
+}
+
+function generateRoom() {
+  S.genId = genId();
+  document.getElementById('generated-rid').textContent = S.genId;
+  document.getElementById('generated-room').style.display = 'block';
+  showToast('✅ Đã tạo mã Room!');
+}
+
+function copyGeneratedId() {
+  copyText(S.genId);
+  showToast('📋 Đã copy: ' + S.genId);
+}
+
+function copyRoomId() {
+  copyText(S.roomId);
+  showToast('📋 Đã copy: ' + S.roomId);
+}
+
+function copyText(t) {
+  if (navigator.clipboard) navigator.clipboard.writeText(t).catch(() => {});
+}
+
+// ===== CREATE =====
+async function createRoom() {
+  const name = document.getElementById('create-name').value.trim();
+  if (!name) { showToast('⚠️ Nhập tên của bạn trước!'); return; }
+  if (!S.genId) { showToast('⚠️ Hãy tạo mã Room trước!'); return; }
+  S.myName = name; S.roomId = S.genId;
+  saveCookie();
+  try {
+    const data = await apiPost(API.rooms, { type: 'create', roomId: S.roomId, name: S.myName });
+    applyRoomState(data.room);
+  } catch (error) {
+    showToast('Đang chạy demo local, chưa lưu DB được');
+  }
+  document.getElementById('waiting-code').textContent = S.roomId;
+  showScreen('waiting');
+  waitForPartner();
+}
+
+// ===== JOIN =====
+async function joinRoom() {
+  const name = document.getElementById('join-name').value.trim();
+  const room = document.getElementById('join-room').value.trim().toUpperCase();
+  if (!name) { showToast('⚠️ Nhập tên của bạn trước!'); return; }
+  if (room.length < 4) { showToast('⚠️ Mã Room không hợp lệ!'); return; }
+  S.myName = name; S.roomId = room; S.partnerName = 'Người Yêu 🥰';
+  saveCookie();
+  try {
+    const data = await apiPost(API.rooms, { type: 'join', roomId: S.roomId, name: S.myName });
+    applyRoomState(data.room);
+  } catch (error) {
+    showToast(error.message || 'Chưa lưu DB được, tiếp tục demo local');
+  }
+  enterRoom(false);
+}
+
+// ===== ENTER ROOM =====
+function enterRoom(isCreator) {
+  if (S.waitingIv) clearInterval(S.waitingIv);
+  S.sessionStart = Date.now();
+  document.getElementById('my-name-disp').textContent = S.myName;
+  document.getElementById('partner-name-disp').textContent = S.partnerName;
+  document.getElementById('header-room-id').textContent = 'ROOM: ' + S.roomId;
+  document.getElementById('stat-room-id').textContent = S.roomId;
+  document.getElementById('waiting-code').textContent = S.roomId;
+  showScreen('room');
+  startTimer();
+  startSync();
+  addActivity('🎉', (isCreator ? S.partnerName + ' đã vào room!' : 'Bạn đã vào room ' + S.roomId + ' thành công!'));
+}
+
+function waitForPartner() {
+  if (S.waitingIv) clearInterval(S.waitingIv);
+  S.waitingIv = setInterval(async () => {
+    try {
+      const res = await fetch(API.rooms + '?roomId=' + encodeURIComponent(S.roomId));
+      if (!res.ok) return;
+      const data = await res.json();
+      applyRoomState(data.room);
+      if (data.room && data.room.partnerName) enterRoom(true);
+    } catch (error) {}
+  }, 3000);
+}
+
+// ===== TIMER =====
+function startTimer() {
+  if (S.timerIv) clearInterval(S.timerIv);
+  S.timerIv = setInterval(() => {
+    const sec = Math.floor((Date.now() - S.sessionStart) / 1000);
+    const h = String(Math.floor(sec/3600)).padStart(2,'0');
+    const m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
+    const s = String(sec%60).padStart(2,'0');
+    document.getElementById('session-timer').textContent = `${h}:${m}:${s}`;
+  }, 1000);
+}
+
+function startSync() {
+  if (S.syncIv) clearInterval(S.syncIv);
+  S.syncIv = setInterval(async () => {
+    if (!S.roomId || !S.sessionStart) return;
+    const seconds = Math.floor((Date.now() - S.sessionStart) / 1000);
+    try {
+      await apiPost(API.rooms, { type: 'session', roomId: S.roomId, seconds });
+      const res = await fetch(API.rooms + '?roomId=' + encodeURIComponent(S.roomId));
+      if (res.ok) {
+        const data = await res.json();
+        applyRoomState(data.room);
+      }
+    } catch (error) {}
+  }, 8000);
+}
+
+// ===== HOLD ACTIONS =====
+function holdStart(key) {
+  const btn = document.getElementById('ab-' + key);
+  const bar = document.getElementById('bar-' + key);
+  btn.classList.add('holding');
+  let prog = 0;
+  S.holdIvs[key] = setInterval(() => {
+    prog = Math.min(prog + 2, 100);
+    bar.style.width = prog + '%';
+  }, 30);
+}
+
+function holdEnd(key) {
+  const btn = document.getElementById('ab-' + key);
+  const bar = document.getElementById('bar-' + key);
+  btn.classList.remove('holding');
+  clearInterval(S.holdIvs[key]);
+  setTimeout(() => { bar.style.width = '0%'; }, 400);
+  const meta = ACTION_META[key] || { emoji: '💕', message: () => '' };
+  const e = meta.emoji;
+  const msg = meta.message(S.myName);
+  doAction(key, e, msg);
+}
+
+async function doAction(key, emoji, msg) {
+  bump(key);
+  playActionAnimation(key, emoji);
+  addActivity(emoji, msg || (S.myName + ' gửi ' + emoji));
+  showToast('Đã gửi tới ' + S.partnerName + ' 💕');
+  if (navigator.vibrate) navigator.vibrate(120);
+  try {
+    const data = await apiPost(API.rooms, {
+      type: 'action',
+      roomId: S.roomId,
+      key,
+      emoji,
+      message: msg || (S.myName + ' gửi ' + emoji),
+      actorName: S.myName
+    });
+    applyRoomState(data.room);
+  } catch (error) {}
+}
+
+function bump(key) {
+  S.counts[key] = (S.counts[key] || 0) + 1;
+  S.total++;
+  const el = document.getElementById('cnt-' + key);
+  if (el) el.textContent = S.counts[key] + ' lần';
+  updateStats();
+}
+
+function updateStats() {
+  document.getElementById('st-total').textContent = S.total;
+  document.getElementById('st-kiss').textContent = S.counts.kiss || 0;
+  document.getElementById('st-hug').textContent = S.counts.hug || 0;
+  document.getElementById('st-hand').textContent = S.counts['hold-hand'] || 0;
+  document.getElementById('st-heart').textContent = S.counts.heart || 0;
+  document.getElementById('st-miss').textContent = S.counts.miss || 0;
+}
+
+// ===== ACTIVITY =====
+function addActivity(emoji, text) {
+  const log = document.getElementById('activity-log');
+  const ph = document.getElementById('activity-placeholder');
+  if (ph) ph.remove();
+  const now = new Date();
+  const t = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const li = document.createElement('li');
+  li.className = 'activity-item';
+  li.innerHTML = `<span>${emoji}</span><span style="flex:1">${text}</span><span class="activity-time">${t}</span>`;
+  log.insertBefore(li, log.firstChild);
+  while (log.children.length > 8) log.removeChild(log.lastChild);
+}
+
+function renderActivities(items) {
+  const log = document.getElementById('activity-log');
+  log.innerHTML = '';
+  if (!items.length) {
+    log.innerHTML = '<li class="activity-item" id="activity-placeholder" style="color:var(--muted);justify-content:center;font-size:0.8rem">Chưa có hoạt động nào...</li>';
+    return;
+  }
+  items.forEach(item => {
+    const d = new Date(item.createdAt || Date.now());
+    const t = d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+    const li = document.createElement('li');
+    li.className = 'activity-item';
+    li.innerHTML = `<span>${item.emoji}</span><span style="flex:1">${item.message}</span><span class="activity-time">${t}</span>`;
+    log.appendChild(li);
+  });
+}
+
+// ===== HEARTS =====
+function spawnHearts(emoji, n) {
+  for (let i = 0; i < n; i++) {
+    setTimeout(() => {
+      const h = document.createElement('div');
+      h.className = 'float-heart';
+      h.textContent = emoji;
+      h.style.left = (20 + Math.random() * 60) + 'vw';
+      h.style.bottom = (80 + Math.random() * 60) + 'px';
+      h.style.animationDelay = (Math.random() * 0.4) + 's';
+      document.body.appendChild(h);
+      setTimeout(() => h.remove(), 2000);
+    }, i * 80);
+  }
+}
+
+function playActionAnimation(key, emoji) {
+  const btn = document.getElementById('ab-' + key);
+  if (btn) {
+    btn.classList.remove('sent');
+    void btn.offsetWidth;
+    btn.classList.add('sent');
+    setTimeout(() => btn.classList.remove('sent'), 700);
+  }
+  spawnHearts(emoji, key === 'heart' ? 10 : 6);
+  spawnBurst(key, btn);
+}
+
+function spawnBurst(key, anchor) {
+  const rect = anchor ? anchor.getBoundingClientRect() : { left: innerWidth / 2, top: innerHeight / 2, width: 0, height: 0 };
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const icons = (ACTION_META[key] && ACTION_META[key].burst) || ['💕','✨'];
+  const count = key === 'angry' ? 8 : 10;
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    const angle = (Math.PI * 2 * i / count) + Math.random() * 0.45;
+    const distance = 54 + Math.random() * 44;
+    el.className = 'love-burst';
+    el.textContent = icons[i % icons.length];
+    el.style.left = cx + 'px';
+    el.style.top = cy + 'px';
+    el.style.setProperty('--dx', Math.cos(angle) * distance + 'px');
+    el.style.setProperty('--dy', Math.sin(angle) * distance + 'px');
+    el.style.setProperty('--rot', (Math.random() * 140 - 70) + 'deg');
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1300);
+  }
+}
+
+// ===== INCOMING =====
+function showIncoming(msg) {
+  const el = document.getElementById('incoming-popup');
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.display = 'none'; }, 3500);
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(t._t);
+  t._t = setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
+// ===== STARS =====
+function rateStar(n) {
+  S.starRating = n;
+  document.querySelectorAll('.star-btn').forEach((b, i) => b.classList.toggle('lit', i < n));
+}
+
+async function submitFeedback() {
+  const txt = document.getElementById('feedback-text').value.trim();
+  if (!S.starRating && !txt) { showToast('⚠️ Chọn sao hoặc viết góp ý nhé!'); return; }
+  try {
+    await apiPost(API.feedback, { roomId: S.roomId, rating: S.starRating, message: txt });
+  } catch (error) {}
+  showToast('💌 Cảm ơn bạn! Góp ý đã được ghi nhận 🙏');
+  document.getElementById('feedback-text').value = '';
+  S.starRating = 0;
+  document.querySelectorAll('.star-btn').forEach(b => b.classList.remove('lit'));
+}
+
+// ===== COOKIE =====
+function saveCookie() {
+  const d = { name: S.myName, lastRoom: S.roomId };
+  document.cookie = 'lvdist=' + encodeURIComponent(JSON.stringify(d)) + '; max-age=2592000; path=/';
+}
+function loadCookie() {
+  const m = document.cookie.match(/lvdist=([^;]+)/);
+  if (!m) return;
+  try {
+    const d = JSON.parse(decodeURIComponent(m[1]));
+    if (d.name) {
+      document.getElementById('create-name').value = d.name;
+      document.getElementById('join-name').value = d.name;
+    }
+    if (d.lastRoom) document.getElementById('join-room').value = d.lastRoom;
+  } catch(e) {}
+}
+loadCookie();
+
+function cancelWaiting() {
+  if (S.waitingIv) clearInterval(S.waitingIv);
+  showScreen('entry');
+}
+
+function leaveRoom() {
+  if (S.timerIv) clearInterval(S.timerIv);
+  if (S.syncIv) clearInterval(S.syncIv);
+  if (S.waitingIv) clearInterval(S.waitingIv);
+  S.sessionStart = null;
+  showScreen('entry');
+  showToast('Đã thoát room 👋');
+}
+</script>
+</body>
+</html>
