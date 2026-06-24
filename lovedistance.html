@@ -672,7 +672,8 @@ async function createRoom() {
     const data = await apiPost(API.rooms, { type: 'create', roomId: S.roomId, name: S.myName });
     applyRoomState(data.room);
   } catch (error) {
-    showToast('Đang chạy demo local, chưa lưu DB được');
+    showToast(error.message || 'Chưa kết nối được DB, chưa thể tạo room');
+    return;
   }
   document.getElementById('waiting-code').textContent = S.roomId;
   showScreen('waiting');
@@ -691,7 +692,8 @@ async function joinRoom() {
     const data = await apiPost(API.rooms, { type: 'join', roomId: S.roomId, name: S.myName });
     applyRoomState(data.room);
   } catch (error) {
-    showToast(error.message || 'Chưa lưu DB được, tiếp tục demo local');
+    showToast(error.message || 'Chưa kết nối được DB, chưa thể vào room');
+    return;
   }
   enterRoom(false);
 }
