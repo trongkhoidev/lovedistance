@@ -47,11 +47,14 @@ module.exports = async function handler(req, res) {
       if (!clientId) return send(res, 400, { error: 'Missing clientId' });
 
       const rows = await db`
-        INSERT INTO rooms (room_id, creator_name, creator_client_id, counts, activities)
-        VALUES (${roomId}, ${name}, ${clientId}, ${JSON.stringify(DEFAULT_COUNTS)}::jsonb, ${JSON.stringify(addActivity([], '🎉', name + ' đã tạo room'))}::jsonb)
+        INSERT INTO rooms (room_id, creator_name, creator_client_id, creator_joined_at, creator_last_seen_at, creator_left_at, counts, activities)
+        VALUES (${roomId}, ${name}, ${clientId}, NOW(), NOW(), NULL, ${JSON.stringify(DEFAULT_COUNTS)}::jsonb, ${JSON.stringify(addActivity([], '🎉', name + ' đã tạo room'))}::jsonb)
         ON CONFLICT (room_id) DO UPDATE SET
           creator_name = COALESCE(rooms.creator_name, EXCLUDED.creator_name),
           creator_client_id = COALESCE(rooms.creator_client_id, EXCLUDED.creator_client_id),
+          creator_joined_at = COALESCE(rooms.creator_joined_at, NOW()),
+          creator_last_seen_at = NOW(),
+          creator_left_at = NULL,
           updated_at = NOW()
         RETURNING *
       `;
@@ -77,6 +80,9 @@ module.exports = async function handler(req, res) {
         UPDATE rooms
         SET partner_name = ${name},
             partner_client_id = ${clientId},
+            partner_joined_at = COALESCE(partner_joined_at, NOW()),
+            partner_last_seen_at = NOW(),
+            partner_left_at = NULL,
             connected_at = COALESCE(connected_at, NOW()),
             activities = ${JSON.stringify(activities)}::jsonb,
             updated_at = NOW()
@@ -113,6 +119,39 @@ module.exports = async function handler(req, res) {
         WHERE room_id = ${roomId}
         RETURNING *
       `;
+      return send(res, 200, { room: normalizeRoom(rows[0]) });
+    }
+
+    if (type === 'heartbeat' || type === 'leave') {
+      const clientId = String(body.clientId || '').trim();
+      if (!clientId) return send(res, 400, { error: 'Missing clientId' });
+
+      const existing = await db`SELECT * FROM rooms WHERE room_id = ${roomId}`;
+      if (!existing[0]) return send(res, 404, { error: 'Room không tồn tại' });
+      const current = existing[0];
+      const isLeaving = type === 'leave';
+      let rows;
+      if (current.creator_client_id === clientId) {
+        rows = await db`
+          UPDATE rooms
+          SET creator_last_seen_at = NOW(),
+              creator_left_at = ${isLeaving ? new Date().toISOString() : null},
+              updated_at = NOW()
+          WHERE room_id = ${roomId}
+          RETURNING *
+        `;
+      } else if (current.partner_client_id === clientId) {
+        rows = await db`
+          UPDATE rooms
+          SET partner_last_seen_at = NOW(),
+              partner_left_at = ${isLeaving ? new Date().toISOString() : null},
+              updated_at = NOW()
+          WHERE room_id = ${roomId}
+          RETURNING *
+        `;
+      } else {
+        return send(res, 403, { error: 'Bạn không thuộc room này' });
+      }
       return send(res, 200, { room: normalizeRoom(rows[0]) });
     }
 

@@ -22,8 +22,14 @@ async function initDb() {
       room_id TEXT PRIMARY KEY,
       creator_name TEXT,
       creator_client_id TEXT,
+      creator_joined_at TIMESTAMPTZ,
+      creator_last_seen_at TIMESTAMPTZ,
+      creator_left_at TIMESTAMPTZ,
       partner_name TEXT,
       partner_client_id TEXT,
+      partner_joined_at TIMESTAMPTZ,
+      partner_last_seen_at TIMESTAMPTZ,
+      partner_left_at TIMESTAMPTZ,
       counts JSONB NOT NULL DEFAULT '{}'::jsonb,
       total INTEGER NOT NULL DEFAULT 0,
       session_seconds INTEGER NOT NULL DEFAULT 0,
@@ -36,6 +42,12 @@ async function initDb() {
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS creator_client_id TEXT`;
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS partner_client_id TEXT`;
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS connected_at TIMESTAMPTZ`;
+  await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS creator_joined_at TIMESTAMPTZ`;
+  await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS creator_last_seen_at TIMESTAMPTZ`;
+  await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS creator_left_at TIMESTAMPTZ`;
+  await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS partner_joined_at TIMESTAMPTZ`;
+  await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS partner_last_seen_at TIMESTAMPTZ`;
+  await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS partner_left_at TIMESTAMPTZ`;
   await db`
     CREATE TABLE IF NOT EXISTS feedback (
       id BIGSERIAL PRIMARY KEY,
@@ -54,8 +66,14 @@ function normalizeRoom(row) {
     roomId: row.room_id,
     creatorName: row.creator_name,
     creatorClientId: row.creator_client_id,
+    creatorJoinedAt: row.creator_joined_at,
+    creatorLastSeenAt: row.creator_last_seen_at,
+    creatorLeftAt: row.creator_left_at,
     partnerName: row.partner_name,
     partnerClientId: row.partner_client_id,
+    partnerJoinedAt: row.partner_joined_at,
+    partnerLastSeenAt: row.partner_last_seen_at,
+    partnerLeftAt: row.partner_left_at,
     counts: row.counts || {},
     total: row.total || 0,
     sessionSeconds: row.session_seconds || 0,

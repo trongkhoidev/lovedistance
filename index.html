@@ -238,14 +238,20 @@ body {
 .heart-bridge { font-size: 2rem; animation: hb 1.5s ease-in-out infinite; }
 @keyframes hb { 0%,100%{transform:scale(1)} 50%{transform:scale(1.25)} }
 
-/* Timer */
-.timer-card {
+/* Presence */
+.presence-card {
   background: linear-gradient(135deg, rgba(255,95,160,0.08), rgba(196,124,255,0.08));
   border: 1px solid rgba(255,95,160,0.15); border-radius: 20px;
-  padding: 20px; text-align: center;
+  padding: 18px; display: grid; gap: 10px;
 }
-.timer-val { font-size: 2.2rem; font-weight: 900; color: var(--pink2); font-variant-numeric: tabular-nums; }
-.timer-lbl { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+.presence-main { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.presence-name { font-size: 1rem; font-weight: 900; color: var(--pink2); }
+.presence-badge { border-radius: 999px; padding: 6px 10px; font-size: 0.72rem; font-weight: 800; background: rgba(74,222,128,0.12); color: #86efac; }
+.presence-badge.offline { background: rgba(155,126,200,0.14); color: var(--muted); }
+.presence-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.presence-item { background: rgba(15,6,23,0.72); border-radius: 12px; padding: 10px 12px; }
+.presence-lbl { color: var(--muted); font-size: 0.72rem; margin-bottom: 3px; }
+.presence-val { font-size: 0.86rem; font-weight: 800; }
 
 /* Actions */
 .actions-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
@@ -437,7 +443,7 @@ body {
       <span class="room-id-badge" onclick="copyRoomId()" id="header-room-id">ROOM: ----</span>
     </div>
     <div class="partner-status">
-      <div class="status-dot online"></div>
+      <div class="status-dot" id="header-status-dot"></div>
       <span style="color:var(--muted);font-size:0.78rem" id="partner-status-label">Online</span>
     </div>
     <button class="btn-leave" onclick="leaveRoom()">Thoát 👋</button>
@@ -460,11 +466,25 @@ body {
       </div>
     </div>
 
-    <!-- Timer -->
-    <div class="timer-card">
-      <div style="font-size:1.5rem;margin-bottom:6px">⏱️</div>
-      <div class="timer-val" id="session-timer">00:00:00</div>
-      <div class="timer-lbl">Thời gian online cùng nhau hôm nay</div>
+    <!-- Presence -->
+    <div class="presence-card">
+      <div class="presence-main">
+        <div>
+          <div class="presence-lbl">Trạng thái người yêu</div>
+          <div class="presence-name" id="presence-name">Người yêu</div>
+        </div>
+        <div class="presence-badge offline" id="presence-badge">Chưa online</div>
+      </div>
+      <div class="presence-grid">
+        <div class="presence-item">
+          <div class="presence-lbl">Vào room lúc</div>
+          <div class="presence-val" id="presence-joined">--</div>
+        </div>
+        <div class="presence-item">
+          <div class="presence-lbl">Rời / thấy cuối</div>
+          <div class="presence-val" id="presence-left">--</div>
+        </div>
+      </div>
     </div>
 
     <!-- Actions -->
@@ -578,7 +598,7 @@ const ACTION_META = {
 
 const S = {
   clientId: getClientId(), role: '', myName: '', partnerName: '', roomId: '', genId: '',
-  sessionStart: null, timerIv: null, syncIv: null, waitingIv: null, starRating: 0, connectedAt: null,
+  syncIv: null, waitingIv: null, starRating: 0, connectedAt: null, lastHeartbeatAt: 0,
   counts: { 'hold-hand': 0, kiss: 0, hug: 0, heart: 0, miss: 0, angry: 0 },
   total: 0,
   holdIvs: {}, holdProgs: {}
@@ -613,8 +633,50 @@ function applyRoomState(room) {
   }
   document.getElementById('my-name-disp').textContent = S.myName || 'Bạn';
   if (S.partnerName) document.getElementById('partner-name-disp').textContent = S.partnerName;
+  updatePresence(room);
   updateStats();
   renderActivities(room.activities || []);
+}
+
+function getPartnerPresence(room) {
+  if (room.creatorClientId === S.clientId) {
+    return {
+      name: room.partnerName || 'Người yêu',
+      joinedAt: room.partnerJoinedAt,
+      lastSeenAt: room.partnerLastSeenAt,
+      leftAt: room.partnerLeftAt
+    };
+  }
+  return {
+    name: room.creatorName || 'Người yêu',
+    joinedAt: room.creatorJoinedAt,
+    lastSeenAt: room.creatorLastSeenAt,
+    leftAt: room.creatorLeftAt
+  };
+}
+
+function updatePresence(room) {
+  const p = getPartnerPresence(room);
+  const lastSeen = p.lastSeenAt ? new Date(p.lastSeenAt).getTime() : 0;
+  const online = lastSeen && Date.now() - lastSeen < 12000 && !p.leftAt;
+  document.getElementById('presence-name').textContent = p.name;
+  document.getElementById('presence-joined').textContent = formatDateTime(p.joinedAt);
+  document.getElementById('presence-left').textContent = p.leftAt ? formatDateTime(p.leftAt) : formatDateTime(p.lastSeenAt);
+  const badge = document.getElementById('presence-badge');
+  badge.textContent = online ? 'Đang online' : (p.joinedAt ? 'Đang offline' : 'Chưa vào room');
+  badge.classList.toggle('offline', !online);
+  document.getElementById('header-status-dot').classList.toggle('online', !!online);
+  document.getElementById('partner-status-label').textContent = online ? 'Online' : 'Offline';
+}
+
+function formatDateTime(value) {
+  if (!value) return '--';
+  return new Date(value).toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit'
+  });
 }
 
 function getClientId() {
@@ -727,7 +789,6 @@ function enterRoom(isCreator) {
   document.getElementById('stat-room-id').textContent = S.roomId;
   document.getElementById('waiting-code').textContent = S.roomId;
   showScreen('room');
-  startTimer();
   startSync();
 }
 
@@ -744,31 +805,28 @@ function waitForPartner() {
   }, 1500);
 }
 
-// ===== TIMER =====
-function startTimer() {
-  if (S.timerIv) clearInterval(S.timerIv);
-  S.timerIv = setInterval(() => {
-    const start = S.connectedAt ? new Date(S.connectedAt).getTime() : Date.now();
-    const sec = Math.max(0, Math.floor((Date.now() - start) / 1000));
-    const h = String(Math.floor(sec/3600)).padStart(2,'0');
-    const m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
-    const s = String(sec%60).padStart(2,'0');
-    document.getElementById('session-timer').textContent = `${h}:${m}:${s}`;
-  }, 1000);
-}
-
 function startSync() {
   if (S.syncIv) clearInterval(S.syncIv);
-  S.syncIv = setInterval(async () => {
-    if (!S.roomId) return;
-    try {
-      const res = await fetch(API.rooms + '?roomId=' + encodeURIComponent(S.roomId));
-      if (res.ok) {
-        const data = await res.json();
-        applyRoomState(data.room);
-      }
-    } catch (error) {}
-  }, 1500);
+  syncRoom();
+  S.syncIv = setInterval(syncRoom, 1500);
+}
+
+async function syncRoom() {
+  if (!S.roomId) return;
+  try {
+    const now = Date.now();
+    if (now - S.lastHeartbeatAt > 8000) {
+      S.lastHeartbeatAt = now;
+      const data = await apiPost(API.rooms, { type: 'heartbeat', roomId: S.roomId, clientId: S.clientId });
+      applyRoomState(data.room);
+      return;
+    }
+    const res = await fetch(API.rooms + '?roomId=' + encodeURIComponent(S.roomId));
+    if (res.ok) {
+      const data = await res.json();
+      applyRoomState(data.room);
+    }
+  } catch (error) {}
 }
 
 // ===== HOLD ACTIONS =====
@@ -967,10 +1025,16 @@ function cancelWaiting() {
 }
 
 function leaveRoom() {
-  if (S.timerIv) clearInterval(S.timerIv);
   if (S.syncIv) clearInterval(S.syncIv);
   if (S.waitingIv) clearInterval(S.waitingIv);
-  S.sessionStart = null;
+  if (S.roomId) {
+    fetch(API.rooms, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'leave', roomId: S.roomId, clientId: S.clientId }),
+      keepalive: true
+    }).catch(() => {});
+  }
   S.connectedAt = null;
   showScreen('entry');
   showToast('Đã thoát room 👋');
