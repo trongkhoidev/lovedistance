@@ -207,10 +207,27 @@ body {
 }
 .btn-leave:hover { background: rgba(255,95,160,0.1); }
 
-.room-body {
-  flex: 1; width: 100%; max-width: 600px; margin: 0 auto;
-  padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;
+.room-shell {
+  width: 100%; flex: 1; display: grid; grid-template-columns: 300px minmax(420px, 1fr) 330px; gap: 16px; padding: 16px; min-height: 0;
 }
+.room-panel, .room-stage, .log-panel { min-height: 0; overflow-y: auto; }
+.room-panel { display: flex; flex-direction: column; gap: 14px; }
+.room-stage {
+  position: relative; border: 1px solid var(--border); border-radius: 20px; overflow: hidden;
+  background: radial-gradient(ellipse at 20% 10%, rgba(255,255,255,0.06), transparent 45%), var(--bg);
+  padding: 18px; display: flex; flex-direction: column; gap: 14px;
+}
+.stage-bg-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.5; pointer-events: none; }
+.stage-content { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 14px; }
+.log-panel { background: rgba(26,13,46,0.95); border: 1px solid var(--border); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.log-panel.hidden { display: none; }
+.room-shell.logs-hidden { grid-template-columns: 300px minmax(420px, 1fr); }
+.log-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.log-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.log-item { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; font-size: 0.82rem; }
+.log-time { color: var(--muted); font-size: 0.7rem; margin-bottom: 3px; }
+.log-toggle { position: fixed; right: 16px; bottom: 16px; z-index: 80; width: auto; padding: 10px 14px; }
+@media (max-width: 1100px) { .room-shell { grid-template-columns: 1fr; } .log-panel { max-height: 360px; } }
 
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 20px;
@@ -299,13 +316,17 @@ body {
 }
 
 /* Pet + customize */
-.pet-card { position: relative; overflow: hidden; min-height: 170px; }
+.pet-card {
+  position: absolute; right: 18px; bottom: 18px; z-index: 3; width: 260px;
+  background: rgba(26,13,46,0.88); backdrop-filter: blur(10px);
+  overflow: hidden; min-height: 0;
+}
 .pet-stage {
   height: 88px; background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
   border-radius: 14px; position: relative; margin-bottom: 14px;
 }
 .pet {
-  position: absolute; left: 12%; bottom: 12px; font-size: 2.6rem;
+  position: absolute; left: 12%; bottom: 12px; font-size: 3.2rem;
   animation: petWalk 7s ease-in-out infinite, petBob 1.6s ease-in-out infinite;
 }
 .pet.happy, .pet.excited, .pet.playful, .pet.loved { filter: drop-shadow(0 0 14px rgba(255,133,184,0.75)); }
@@ -480,8 +501,9 @@ body {
     <button class="btn-leave" onclick="leaveRoom()">Thoát 👋</button>
   </div>
 
-  <div class="room-body">
-
+  <button class="tool-btn log-toggle" onclick="toggleLogPanel()">Log</button>
+  <div class="room-shell" id="room-shell">
+    <aside class="room-panel">
     <!-- Couple names -->
     <div class="couple-card">
       <div class="person-info">
@@ -518,25 +540,6 @@ body {
       </div>
     </div>
 
-    <!-- Pet -->
-    <div class="card pet-card">
-      <div class="card-title">🐾 Pet của Room</div>
-      <div class="pet-stage"><div class="pet" id="room-pet">💞</div></div>
-      <div class="pet-meta">
-        <div><div class="pet-name" id="pet-name">Mochi</div><div class="presence-lbl" id="pet-mood">curious</div></div>
-        <div style="text-align:right"><div class="pet-name">Lv. <span id="pet-level">1</span></div><div class="presence-lbl"><span id="pet-xp">0</span> XP</div></div>
-      </div>
-      <div class="pet-bars">
-        <div class="presence-lbl">Tình cảm</div><div class="mini-bar"><span id="pet-affection" style="width:20%"></span></div>
-        <div class="presence-lbl">Năng lượng</div><div class="mini-bar"><span id="pet-energy" style="width:80%"></span></div>
-      </div>
-      <div class="tool-row">
-        <button class="tool-btn" onclick="petAction('feed')">Cho ăn</button>
-        <button class="tool-btn" onclick="petAction('play')">Chơi</button>
-        <button class="tool-btn" onclick="petAction('pet')">Vuốt ve</button>
-      </div>
-    </div>
-
     <!-- Customize -->
     <div class="card">
       <div class="card-title">🎨 Tùy chỉnh Room</div>
@@ -549,6 +552,25 @@ body {
       <p class="presence-lbl" style="margin-top:8px">Template và hành động custom sẽ lưu vào DB của room.</p>
     </div>
 
+    <!-- Feedback -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title">💬 Góp ý cải thiện</div>
+      <div class="feedback-stars" id="fstars">
+        <button class="star-btn" onclick="rateStar(1)">⭐</button>
+        <button class="star-btn" onclick="rateStar(2)">⭐</button>
+        <button class="star-btn" onclick="rateStar(3)">⭐</button>
+        <button class="star-btn" onclick="rateStar(4)">⭐</button>
+        <button class="star-btn" onclick="rateStar(5)">⭐</button>
+      </div>
+      <p style="font-size:0.78rem;color:var(--muted)">Bạn muốn tính năng gì thêm?</p>
+      <textarea class="feedback-inp" id="feedback-text" rows="3"
+        placeholder="Ví dụ: Muốn có mini game đôi, muốn nghe nhạc cùng nhau..."></textarea>
+      <button class="btn-feedback" onclick="submitFeedback()">Gửi góp ý 💌</button>
+    </div>
+    </aside>
+
+    <main class="room-stage" id="room-stage">
+      <div class="stage-content">
     <!-- Actions -->
     <div class="card">
       <div class="card-title">💌 Gửi cảm xúc cho người yêu</div>
@@ -571,30 +593,44 @@ body {
       </div>
     </div>
 
-    <!-- Activity -->
-    <div class="card">
-      <div class="card-title">📜 Hoạt động gần đây</div>
-      <ul class="activity-log" id="activity-log">
-        <li class="activity-item" id="activity-placeholder" style="color:var(--muted);justify-content:center;font-size:0.8rem">Chưa có hoạt động nào...</li>
-      </ul>
-    </div>
 
-    <!-- Feedback -->
-    <div class="card" style="margin-bottom:20px">
-      <div class="card-title">💬 Góp ý cải thiện</div>
-      <div class="feedback-stars" id="fstars">
-        <button class="star-btn" onclick="rateStar(1)">⭐</button>
-        <button class="star-btn" onclick="rateStar(2)">⭐</button>
-        <button class="star-btn" onclick="rateStar(3)">⭐</button>
-        <button class="star-btn" onclick="rateStar(4)">⭐</button>
-        <button class="star-btn" onclick="rateStar(5)">⭐</button>
       </div>
-      <p style="font-size:0.78rem;color:var(--muted)">Bạn muốn tính năng gì thêm?</p>
-      <textarea class="feedback-inp" id="feedback-text" rows="3"
-        placeholder="Ví dụ: Muốn có mini game đôi, muốn nghe nhạc cùng nhau..."></textarea>
-      <button class="btn-feedback" onclick="submitFeedback()">Gửi góp ý 💌</button>
+    <!-- Pet -->
+    <div class="card pet-card">
+      <div class="card-title">🐾 Pet của Room</div>
+      <div class="pet-stage"><div class="pet" id="room-pet">💞</div></div>
+      <div class="pet-meta">
+        <div><div class="pet-name" id="pet-name">Mochi</div><div class="presence-lbl" id="pet-mood">curious</div></div>
+        <div style="text-align:right"><div class="pet-name">Lv. <span id="pet-level">1</span></div><div class="presence-lbl"><span id="pet-xp">0</span> XP</div></div>
+      </div>
+      <div class="pet-bars">
+        <div class="presence-lbl">Tình cảm</div><div class="mini-bar"><span id="pet-affection" style="width:20%"></span></div>
+        <div class="presence-lbl">Năng lượng</div><div class="mini-bar"><span id="pet-energy" style="width:80%"></span></div>
+      </div>
+      <div class="action-edit-grid">
+        <input class="inp" id="pet-name-input" placeholder="Tên pet" maxlength="18">
+        <select class="inp" id="pet-type-select">
+          <option value="dog">Chó</option>
+          <option value="cat">Mèo</option>
+          <option value="bunny">Thỏ</option>
+          <option value="fox">Cáo</option>
+        </select>
+        <button class="tool-btn" onclick="savePetDesign()">Lưu</button>
+      </div>
+      <div class="tool-row">
+        <button class="tool-btn" onclick="petAction('feed')">Cho ăn</button>
+        <button class="tool-btn" onclick="petAction('play')">Chơi</button>
+        <button class="tool-btn" onclick="petAction('pet')">Vuốt ve</button>
+      </div>
     </div>
 
+
+    </main>
+
+    <aside class="log-panel" id="log-panel">
+      <div class="log-head"><div class="card-title" style="margin:0">📜 Log Room</div><button class="tool-btn" onclick="toggleLogPanel()">Ẩn</button></div>
+      <ul class="log-list" id="event-log"><li class="log-item"><div class="log-time">--</div>Chưa có log...</li></ul>
+    </aside>
   </div>
 </div>
 
@@ -602,6 +638,7 @@ body {
 // ===== APP STATE =====
 const API = {
   rooms: '/api/rooms',
+  events: '/api/events',
   feedback: '/api/feedback'
 };
 
@@ -636,7 +673,7 @@ const S = {
   clientId: getClientId(), role: '', myName: '', partnerName: '', roomId: '', genId: '',
   syncIv: null, waitingIv: null, starRating: 0, connectedAt: null, lastHeartbeatAt: 0,
   counts: { 'hold-hand': 0, kiss: 0, hug: 0, heart: 0, miss: 0, angry: 0 },
-  total: 0, actions: DEFAULT_ACTIONS, theme: ROOM_TEMPLATES[0], pet: null,
+  total: 0, actions: DEFAULT_ACTIONS, theme: ROOM_TEMPLATES[0], pet: null, events: [], lastEventId: 0,
   holdIvs: {}, holdProgs: {}
 };
 
@@ -679,6 +716,7 @@ function applyRoomState(room) {
   renderPet();
   updateStats();
   renderActivities(room.activities || []);
+  fetchEvents();
 }
 
 function resolveTheme(room) {
@@ -750,7 +788,8 @@ function renderPet() {
   if (!S.pet) return;
   const petEl = document.getElementById('room-pet');
   if (!petEl) return;
-  petEl.textContent = S.pet.level >= 10 ? '💖' : (S.pet.level >= 5 ? '🐰' : '💞');
+  const petIcons = { dog: '🐶', cat: '🐱', bunny: '🐰', fox: '🦊', heartbun: '💞' };
+  petEl.textContent = petIcons[S.pet.type] || petIcons.heartbun;
   petEl.className = 'pet ' + (S.pet.mood || 'curious');
   document.getElementById('pet-name').textContent = S.pet.name || 'Mochi';
   document.getElementById('pet-mood').textContent = 'Mood: ' + (S.pet.mood || 'curious');
@@ -758,6 +797,43 @@ function renderPet() {
   document.getElementById('pet-xp').textContent = S.pet.xp || 0;
   document.getElementById('pet-affection').style.width = Math.min(100, S.pet.affection || 0) + '%';
   document.getElementById('pet-energy').style.width = Math.min(100, S.pet.energy || 0) + '%';
+  const nameInput = document.getElementById('pet-name-input');
+  const typeSelect = document.getElementById('pet-type-select');
+  if (nameInput && document.activeElement !== nameInput) nameInput.value = S.pet.name || '';
+  if (typeSelect) typeSelect.value = S.pet.type || 'dog';
+}
+
+async function fetchEvents() {
+  if (!S.roomId) return;
+  try {
+    const url = API.events + '?roomId=' + encodeURIComponent(S.roomId) + (S.lastEventId ? '&afterId=' + S.lastEventId : '&limit=50');
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const data = await res.json();
+    const incoming = data.events || [];
+    if (!incoming.length) return;
+    const map = new Map(S.events.map(e => [String(e.id), e]));
+    incoming.forEach(e => map.set(String(e.id), e));
+    S.events = Array.from(map.values()).sort((a, b) => Number(a.id) - Number(b.id)).slice(-80);
+    S.lastEventId = Math.max(...S.events.map(e => Number(e.id) || 0));
+    renderEventLog();
+  } catch (error) {}
+}
+
+function renderEventLog() {
+  const list = document.getElementById('event-log');
+  if (!list) return;
+  const events = S.events.slice().reverse();
+  if (!events.length) {
+    list.innerHTML = '<li class="log-item"><div class="log-time">--</div>Chưa có log...</li>';
+    return;
+  }
+  list.innerHTML = events.map(e => `<li class="log-item"><div class="log-time">${formatDateTime(e.created_at)}</div>${e.emoji || ''} ${escapeHtml(e.message || '')}</li>`).join('');
+}
+
+function toggleLogPanel() {
+  document.getElementById('log-panel').classList.toggle('hidden');
+  document.getElementById('room-shell').classList.toggle('logs-hidden');
 }
 
 async function petAction(petActionType) {
@@ -765,6 +841,16 @@ async function petAction(petActionType) {
     const data = await apiPost(API.rooms, { type: 'pet', roomId: S.roomId, petAction: petActionType });
     applyRoomState(data.room);
     showToast('Pet vui hơn rồi đó');
+  } catch (error) { showToast(error.message); }
+}
+
+async function savePetDesign() {
+  try {
+    const name = document.getElementById('pet-name-input').value.trim();
+    const petType = document.getElementById('pet-type-select').value;
+    const data = await apiPost(API.rooms, { type: 'pet', roomId: S.roomId, name, petType });
+    applyRoomState(data.room);
+    showToast('Đã lưu pet');
   } catch (error) { showToast(error.message); }
 }
 
@@ -942,7 +1028,7 @@ function waitForPartner() {
 function startSync() {
   if (S.syncIv) clearInterval(S.syncIv);
   syncRoom();
-  S.syncIv = setInterval(syncRoom, 1500);
+  S.syncIv = setInterval(syncRoom, 5000);
 }
 
 async function syncRoom() {
@@ -960,6 +1046,7 @@ async function syncRoom() {
       const data = await res.json();
       applyRoomState(data.room);
     }
+    fetchEvents();
   } catch (error) {}
 }
 

@@ -21,6 +21,21 @@ function addActivity(activities, emoji, message) {
   return next.slice(0, 8);
 }
 
+async function logEvent(db, roomId, eventType, message, opts = {}) {
+  await db`
+    INSERT INTO room_events (room_id, actor_client_id, actor_name, event_type, emoji, message, payload)
+    VALUES (
+      ${roomId},
+      ${opts.actorClientId || null},
+      ${opts.actorName || null},
+      ${eventType},
+      ${opts.emoji || null},
+      ${message},
+      ${JSON.stringify(opts.payload || {})}::jsonb
+    )
+  `;
+}
+
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, Number(n) || 0));
 }
@@ -97,6 +112,7 @@ module.exports = async function handler(req, res) {
           updated_at = NOW()
         RETURNING *
       `;
+      await logEvent(db, roomId, 'room.created', `${name} vào web và tạo room`, { actorClientId: clientId, actorName: name, emoji: '🎉' });
       return send(res, 200, { room: normalizeRoom(rows[0]) });
     }
 
@@ -128,6 +144,7 @@ module.exports = async function handler(req, res) {
         WHERE room_id = ${roomId}
         RETURNING *
       `;
+      await logEvent(db, roomId, 'room.joined', `${name} vào room`, { actorClientId: clientId, actorName: name, emoji: '💞' });
       return send(res, 200, { room: normalizeRoom(rows[0]) });
     }
 
@@ -161,6 +178,7 @@ module.exports = async function handler(req, res) {
         WHERE room_id = ${roomId}
         RETURNING *
       `;
+      await logEvent(db, roomId, 'action.sent', message, { actorName, emoji, payload: { key } });
       return send(res, 200, { room: normalizeRoom(rows[0]) });
     }
 
@@ -183,6 +201,7 @@ module.exports = async function handler(req, res) {
         WHERE room_id = ${roomId}
         RETURNING *
       `;
+      await logEvent(db, roomId, 'theme.changed', `Đã đổi giao diện room thành ${theme.name || theme.templateId}`, { emoji: '🎨', payload: { templateId: theme.templateId, persist } });
       return send(res, rows[0] ? 200 : 404, rows[0] ? { room: normalizeRoom(rows[0]) } : { error: 'Room không tồn tại' });
     }
 
@@ -195,6 +214,7 @@ module.exports = async function handler(req, res) {
         WHERE room_id = ${roomId}
         RETURNING *
       `;
+      await logEvent(db, roomId, 'custom_action.saved', 'Đã cập nhật bộ hành động của room', { emoji: '✨', payload: { count: actions.length } });
       return send(res, rows[0] ? 200 : 404, rows[0] ? { room: normalizeRoom(rows[0]) } : { error: 'Room không tồn tại' });
     }
 
@@ -205,6 +225,7 @@ module.exports = async function handler(req, res) {
       const patch = {};
       let xpGain = 0;
       if (body.name) patch.name = String(body.name).trim().slice(0, 18);
+      if (body.petType) patch.type = String(body.petType).trim().slice(0, 18);
       if (action === 'feed') { xpGain = 4; patch.hungerDrop = 18; patch.energyBoost = 4; patch.mood = 'full'; }
       if (action === 'play') { xpGain = 7; patch.energyBoost = -5; patch.mood = 'playful'; }
       if (action === 'pet') { xpGain = 5; patch.mood = 'loved'; }
@@ -218,6 +239,8 @@ module.exports = async function handler(req, res) {
         WHERE room_id = ${roomId}
         RETURNING *
       `;
+      const petLabel = action === 'feed' ? 'cho pet ăn' : action === 'play' ? 'chơi với pet' : action === 'pet' ? 'vuốt ve pet' : 'cập nhật pet';
+      await logEvent(db, roomId, 'pet.action', petLabel, { emoji: '🐾', payload: { petAction: action, petName: pet.name } });
       return send(res, 200, { room: normalizeRoom(rows[0]) });
     }
 
@@ -250,6 +273,10 @@ module.exports = async function handler(req, res) {
         `;
       } else {
         return send(res, 403, { error: 'Bạn không thuộc room này' });
+      }
+      if (isLeaving) {
+        const name = current.creator_client_id === clientId ? current.creator_name : current.partner_name;
+        await logEvent(db, roomId, 'room.left', `${name || 'Ai đó'} rời room`, { actorClientId: clientId, actorName: name, emoji: '👋' });
       }
       return send(res, 200, { room: normalizeRoom(rows[0]) });
     }
