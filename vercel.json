@@ -1,10 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "cleanUrls": true,
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/lovedistance.html"
-    }
+  "framework": "nextjs",
+  "crons": [
+    { "path": "/api/push/cron", "schedule": "0 1,11 * * *" }
   ]
 }

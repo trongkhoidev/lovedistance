@@ -1,0 +1,13 @@
+{
+  "name": "LoveDistance — Yêu xa cùng thú cưng biển",
+  "short_name": "LoveDistance",
+  "description": "Gửi cảm xúc realtime, cùng nuôi thú cưng biển và leo bảng xếp hạng.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07263a",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

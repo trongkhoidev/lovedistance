@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Ocean — light (default) */
+  --c-bg: 238 249 255;
+  --c-surface: 255 255 255;
+  --c-surface-2: 227 244 251;
+  --c-border: 199 226 240;
+  --c-primary: 14 165 233;
+  --c-teal: 45 212 191;
+  --c-aqua: 125 211 252;
+  --c-deep: 12 74 110;
+  --c-love: 251 113 133;
+  --c-sun: 251 191 36;
+  --c-text: 11 58 82;
+  --c-muted: 91 135 160;
+  --c-shadow: 12 74 110;
+}
+
+.dark {
+  /* Ocean night */
+  --c-bg: 7 38 58;
+  --c-surface: 14 53 80;
+  --c-surface-2: 20 67 99;
+  --c-border: 51 99 134;
+  --c-primary: 56 189 248;
+  --c-teal: 45 212 191;
+  --c-aqua: 125 211 252;
+  --c-deep: 125 211 252;
+  --c-love: 251 113 133;
+  --c-sun: 251 191 36;
+  --c-text: 224 243 255;
+  --c-muted: 127 176 201;
+  --c-shadow: 2 12 22;
+}
+
+@layer base {
+  * {
+    border-color: rgb(var(--c-border));
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-bg text-text font-sans antialiased;
+    background-image:
+      radial-gradient(900px 500px at 12% -8%, rgb(var(--c-aqua) / 0.35), transparent 60%),
+      radial-gradient(800px 520px at 100% 0%, rgb(var(--c-teal) / 0.22), transparent 55%),
+      radial-gradient(700px 600px at 50% 110%, rgb(var(--c-primary) / 0.18), transparent 60%);
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--c-primary) / 0.35);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-card bg-surface/80 backdrop-blur-md border border-border/70 shadow-soft;
+  }
+  .glass {
+    @apply bg-surface/60 backdrop-blur-xl border border-border/60;
+  }
+  .pill {
+    @apply rounded-pill px-3 py-1 text-sm font-semibold;
+  }
+  .grad-text {
+    @apply bg-gradient-to-r from-primary via-teal to-aqua bg-clip-text text-transparent;
+  }
+  .grad-primary {
+    background-image: linear-gradient(135deg, rgb(var(--c-primary)), rgb(var(--c-teal)));
+  }
+  .focus-ring {
+    @apply outline-none focus-visible:ring-4 focus-visible:ring-primary/30;
+  }
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
