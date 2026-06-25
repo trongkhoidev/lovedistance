@@ -83,6 +83,8 @@ export interface Room {
   partnerJoinedAt: string | null;
   partnerLastSeenAt: string | null;
   partnerLeftAt: string | null;
+  creatorTouchAt: string | null;
+  partnerTouchAt: string | null;
   counts: Record<string, number>;
   total: number;
   sessionSeconds: number;

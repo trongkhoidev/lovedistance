@@ -49,6 +49,9 @@ export const api = {
   async heartbeat(roomId: string, clientId: string) {
     return post({ type: 'heartbeat', roomId, clientId });
   },
+  async touch(roomId: string, clientId: string, state: 'start' | 'ping' | 'end') {
+    return post({ type: 'touch', roomId, clientId, state });
+  },
   async leave(roomId: string, clientId: string) {
     return fetch('/api/rooms', {
       method: 'POST',

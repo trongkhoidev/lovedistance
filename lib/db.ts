@@ -59,6 +59,8 @@ export async function initDb(): Promise<void> {
       partner_joined_at TIMESTAMPTZ,
       partner_last_seen_at TIMESTAMPTZ,
       partner_left_at TIMESTAMPTZ,
+      creator_touch_at TIMESTAMPTZ,
+      partner_touch_at TIMESTAMPTZ,
       counts JSONB NOT NULL DEFAULT '{}'::jsonb,
       total INTEGER NOT NULL DEFAULT 0,
       session_seconds INTEGER NOT NULL DEFAULT 0,
@@ -78,6 +80,8 @@ export async function initDb(): Promise<void> {
   `;
   // Backfill columns for previously-created tables (idempotent)
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS coins INTEGER NOT NULL DEFAULT 0`;
+  await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS creator_touch_at TIMESTAMPTZ`;
+  await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS partner_touch_at TIMESTAMPTZ`;
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS inventory JSONB NOT NULL DEFAULT '{}'::jsonb`;
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS streak JSONB NOT NULL DEFAULT '{}'::jsonb`;
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS theme_config JSONB NOT NULL DEFAULT '{}'::jsonb`;
@@ -169,6 +173,8 @@ export function normalizeRoom(row: Row | null | undefined, nowMs = Date.now()): 
     partnerJoinedAt: row.partner_joined_at,
     partnerLastSeenAt: row.partner_last_seen_at,
     partnerLeftAt: row.partner_left_at,
+    creatorTouchAt: row.creator_touch_at,
+    partnerTouchAt: row.partner_touch_at,
     counts: row.counts || {},
     total: row.total || 0,
     sessionSeconds: row.session_seconds || 0,

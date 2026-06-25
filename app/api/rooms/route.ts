@@ -333,6 +333,23 @@ export async function POST(req: Request) {
       return ok({ room: normalizeRoom(rows[0]) });
     }
 
+    // ---- live touch (hold hands) ----
+    if (type === 'touch') {
+      const clientId = String(body.clientId || '').trim();
+      if (!clientId) return fail('Missing clientId');
+      const state = String(body.state || 'start');
+      const val = state === 'end' ? null : new Date().toISOString();
+      const existing = await db`SELECT creator_client_id, partner_client_id FROM rooms WHERE room_id = ${roomId}`;
+      if (!existing[0]) return fail('Room không tồn tại', 404);
+      const isCreator = existing[0].creator_client_id === clientId;
+      const isPartner = existing[0].partner_client_id === clientId;
+      if (!isCreator && !isPartner) return fail('Bạn không thuộc room này', 403);
+      const rows = isCreator
+        ? await db`UPDATE rooms SET creator_touch_at = ${val}, updated_at = NOW() WHERE room_id = ${roomId} RETURNING *`
+        : await db`UPDATE rooms SET partner_touch_at = ${val}, updated_at = NOW() WHERE room_id = ${roomId} RETURNING *`;
+      return ok({ room: normalizeRoom(rows[0]) });
+    }
+
     // ---- session timer ----
     if (type === 'session') {
       const seconds = Math.max(0, Number(body.seconds || 0));

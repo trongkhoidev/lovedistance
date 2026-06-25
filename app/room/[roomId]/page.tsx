@@ -17,6 +17,7 @@ import { CustomActions } from '@/components/room/CustomActions';
 import { MediaUpload } from '@/components/room/MediaUpload';
 import { FeedbackCard } from '@/components/room/FeedbackCard';
 import { IncomingPopup, type Incoming } from '@/components/room/IncomingPopup';
+import { EmotionFX, type FxEvent } from '@/components/room/EmotionFX';
 import { AquariumStage } from '@/components/aquarium/AquariumStage';
 import { PetStatsPanel } from '@/components/pet/PetStatsPanel';
 import { PetActions } from '@/components/pet/PetActions';
@@ -60,12 +61,20 @@ export default function RoomPage() {
   const [reaction, setReaction] = useState<{ id: number; emoji: string } | null>(null);
   const [levelUp, setLevelUp] = useState<number | null>(null);
   const [incoming, setIncoming] = useState<Incoming | null>(null);
+  const [fx, setFx] = useState<FxEvent | null>(null);
   const [busyPet, setBusyPet] = useState(false);
   const [showWaiting, setShowWaiting] = useState(true);
 
   const joinAttempted = useRef(false);
   const seenEventId = useRef<number | null>(null);
   const prevLevel = useRef<number | null>(null);
+  const fxId = useRef(0);
+  const touchPing = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const playFx = useCallback((key: string, emoji: string, mine: boolean, actorName?: string) => {
+    fxId.current += 1;
+    setFx({ id: fxId.current, key, emoji, mine, actorName });
+  }, []);
 
   // ---- membership / auto-join ----
   useEffect(() => {
@@ -117,7 +126,9 @@ export default function RoomPage() {
       seenEventId.current = latest.id;
       const partnerAction = [...fresh].reverse().find((e) => e.event_type === 'action.sent' && e.actor_name && e.actor_name !== presence.myName);
       if (partnerAction) {
-        setIncoming({ id: partnerAction.id, emoji: partnerAction.emoji || '💕', message: partnerAction.message });
+        const key = (partnerAction.payload as { key?: string } | null)?.key || '';
+        setIncoming({ id: partnerAction.id, emoji: partnerAction.emoji || '💕', message: partnerAction.message, key });
+        playFx(key, partnerAction.emoji || '💕', false, partnerAction.actor_name || undefined);
         navigator.vibrate?.(40);
         setTimeout(() => setIncoming((cur) => (cur?.id === partnerAction.id ? null : cur)), 3500);
       }
@@ -139,6 +150,13 @@ export default function RoomPage() {
     if (room?.partnerClientId) setShowWaiting(false);
   }, [room?.partnerClientId]);
 
+  // stop live-touch ping on unmount
+  useEffect(() => {
+    return () => {
+      if (touchPing.current) clearInterval(touchPing.current);
+    };
+  }, []);
+
   const effectiveTheme: ThemeConfig | undefined = useMemo(() => {
     if (!room) return undefined;
     if (room.sessionThemeConfig && room.sessionThemeExpiresAt && new Date(room.sessionThemeExpiresAt).getTime() > Date.now()) {
@@ -153,6 +171,7 @@ export default function RoomPage() {
   // ---- mutations ----
   const sendAction = useCallback(
     async (action: RoomAction) => {
+      playFx(action.key, action.emoji, true);
       try {
         const res = await api.sendAction(roomId, action, presence.myName, clientId);
         applyRoom(res.room);
@@ -161,8 +180,34 @@ export default function RoomPage() {
         toast((e as Error).message, 'error');
       }
     },
-    [roomId, presence.myName, clientId, applyRoom, pokeEvents, toast]
+    [roomId, presence.myName, clientId, applyRoom, pokeEvents, toast, playFx]
   );
+
+  const echo = useCallback(
+    (key: string) => {
+      const a = room?.actions.find((x) => x.key === key);
+      if (a) sendAction(a);
+    },
+    [room, sendAction]
+  );
+
+  const onHoldStart = useCallback(() => {
+    api.touch(roomId, clientId, 'start').then((r) => applyRoom(r.room)).catch(() => {});
+    if (touchPing.current) clearInterval(touchPing.current);
+    touchPing.current = setInterval(() => {
+      api.touch(roomId, clientId, 'ping').catch(() => {});
+    }, 2500);
+  }, [roomId, clientId, applyRoom]);
+
+  const onHoldEnd = useCallback(() => {
+    if (touchPing.current) {
+      clearInterval(touchPing.current);
+      touchPing.current = null;
+    }
+    api.touch(roomId, clientId, 'end').then((r) => applyRoom(r.room)).catch(() => {});
+    const a = room?.actions.find((x) => x.key === 'hold-hand');
+    if (a) sendAction(a);
+  }, [roomId, clientId, room, applyRoom, sendAction]);
 
   const carePet = useCallback(
     async (action: PetActionKey) => {
@@ -315,6 +360,9 @@ export default function RoomPage() {
 
   const waiting = presence.iAmCreator && !room.partnerClientId && showWaiting;
 
+  const partnerTouchAt = presence.iAmCreator ? room.partnerTouchAt : room.creatorTouchAt;
+  const partnerTouching = !!partnerTouchAt && Date.now() - new Date(partnerTouchAt).getTime() < 6000;
+
   return (
     <div style={accentVars} className="relative min-h-dvh pb-24 sm:pb-6">
       <ParticleField kind={effectiveTheme?.particles || 'bubbles'} count={14} glyphs={season?.glyphs} />
@@ -360,7 +408,15 @@ export default function RoomPage() {
             {tab === 'home' && (
               <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
                 <div className="space-y-4">
-                  <ActionGrid room={room} onSend={sendAction} />
+                  <ActionGrid
+                    room={room}
+                    partnerName={presence.partnerName}
+                    partnerTouching={partnerTouching}
+                    partnerOnline={presence.partner.online}
+                    onSend={sendAction}
+                    onHoldStart={onHoldStart}
+                    onHoldEnd={onHoldEnd}
+                  />
                   <StatsCard room={room} />
                 </div>
                 <div className="lg:max-h-[calc(100dvh-12rem)]">
@@ -451,7 +507,8 @@ export default function RoomPage() {
         </div>
       </nav>
 
-      <IncomingPopup incoming={incoming} />
+      <IncomingPopup incoming={incoming} onEcho={echo} />
+      <EmotionFX fx={fx} onDone={() => setFx(null)} />
       <LevelUpBurst level={levelUp} />
 
       {/* waiting overlay */}
