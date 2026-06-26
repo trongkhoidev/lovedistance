@@ -55,7 +55,7 @@ export function useLiveRoom(roomId: string, clientId: string): UseLiveRoomResult
     if (!roomId) return;
     (async () => {
       try {
-        const [r, ev] = await Promise.all([api.getRoom(roomId), api.getEvents(roomId)]);
+        const [r, ev] = await Promise.all([api.getRoom(roomId, clientId), api.getEvents(roomId)]);
         if (!mounted.current) return;
         setRoom(r.room);
         mergeEvents(ev.events);
@@ -68,7 +68,7 @@ export function useLiveRoom(roomId: string, clientId: string): UseLiveRoomResult
     return () => {
       mounted.current = false;
     };
-  }, [roomId, mergeEvents]);
+  }, [roomId, clientId, mergeEvents]);
 
   // SSE subscription
   useEffect(() => {

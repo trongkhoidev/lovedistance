@@ -3,7 +3,7 @@
 import { motion, type HTMLMotionProps } from 'framer-motion';
 import { forwardRef } from 'react';
 
-type Variant = 'primary' | 'soft' | 'ghost' | 'love' | 'outline';
+type Variant = 'primary' | 'soft' | 'ghost' | 'love' | 'outline' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
 
 interface Props extends Omit<HTMLMotionProps<'button'>, 'ref'> {
@@ -15,6 +15,7 @@ interface Props extends Omit<HTMLMotionProps<'button'>, 'ref'> {
 const variants: Record<Variant, string> = {
   primary: 'grad-primary text-white shadow-pop',
   love: 'bg-love text-white shadow-pop',
+  danger: 'bg-red-500 text-white shadow-pop hover:bg-red-600',
   soft: 'bg-surface-2 text-text hover:bg-surface-2/70 border border-border/60',
   outline: 'bg-transparent text-primary border-2 border-primary/40 hover:bg-primary/10',
   ghost: 'bg-transparent text-muted hover:text-text hover:bg-surface-2/60'

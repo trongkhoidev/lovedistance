@@ -15,7 +15,8 @@ import { canBuy, FOOD_EFFECTS, normalizeInventory, SHOP_MAP } from '@/lib/shop';
 import { bumpStreak, normalizeStreak } from '@/lib/streak';
 import { pushToRoom } from '@/lib/push';
 import { activeSeason } from '@/lib/season';
-import type { PetActionKey, RoomAction } from '@/lib/types';
+import { normalizeSulk, redactRoomSulk } from '@/lib/sulk';
+import type { PetActionKey, RoomAction, SulkState } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,11 +53,13 @@ export async function GET(req: Request) {
   try {
     await initDb();
     const db = getSql();
-    const roomId = String(new URL(req.url).searchParams.get('roomId') || '').trim().toUpperCase();
+    const params = new URL(req.url).searchParams;
+    const roomId = String(params.get('roomId') || '').trim().toUpperCase();
+    const clientId = String(params.get('clientId') || '').trim() || null;
     if (!roomId) return fail('Missing roomId');
     const rows = await db`SELECT * FROM rooms WHERE room_id = ${roomId}`;
     if (!rows[0]) return fail('Room not found', 404);
-    return ok({ room: normalizeRoom(rows[0]) });
+    return ok({ room: redactRoomSulk(normalizeRoom(rows[0])!, clientId) });
   } catch (error) {
     const e = error as ApiError;
     return fail(e.message || 'Server error', e.statusCode || 500);
@@ -130,9 +133,10 @@ export async function POST(req: Request) {
     if (type === 'action') {
       const key = String(body.key || '');
       const emoji = String(body.emoji || '💕');
-      const message = String(body.message || 'Có tương tác mới');
       const actorName = String(body.actorName || '').trim() || 'Ai đó';
       const actorClientId = String(body.clientId || '').trim() || null;
+      const note = String(body.note || '').trim().slice(0, 120);
+      const message = note ? `${actorName}: ${note}` : String(body.message || 'Có tương tác mới');
       const existing = await db`SELECT * FROM rooms WHERE room_id = ${roomId}`;
       if (!existing[0]) return fail('Room không tồn tại', 404);
       // interacting cheers the pet a little
@@ -157,7 +161,8 @@ export async function POST(req: Request) {
         WHERE room_id = ${roomId}
         RETURNING *
       `;
-      await logEvent(db, roomId, 'action.sent', message, { actorClientId, actorName, emoji, payload: { key } });
+      const level = Math.max(1, Math.min(3, Number(body.level) || 1));
+      await logEvent(db, roomId, 'action.sent', message, { actorClientId, actorName, emoji, payload: { key, level, note } });
       await pushToRoom(db, roomId, actorClientId, { title: `${actorName} ${emoji}`, body: message, url: `/room/${roomId}`, tag: 'action' });
       return ok({ room: normalizeRoom(rows[0]) });
     }
@@ -203,6 +208,19 @@ export async function POST(req: Request) {
       if (!def) return fail('Hành động pet không hợp lệ');
 
       const result = carePet(current.pet_state, action, now);
+
+      // Care that wasn't needed (stat already met / pet exhausted): persist mood only, no rewards.
+      if (result.wasted) {
+        const rows = await db`
+          UPDATE rooms SET pet_state = ${JSON.stringify(result.pet)}::jsonb, updated_at = NOW()
+          WHERE room_id = ${roomId} RETURNING *
+        `;
+        return ok({
+          room: normalizeRoom(rows[0]),
+          care: { wasted: true, message: result.message, xpGain: 0, coinGain: 0, leveledUp: false }
+        });
+      }
+
       const streakUpd = bumpStreak(current.streak, now);
       const season = activeSeason();
       const coinGain = result.coinGain + streakUpd.coinBonus + (season?.coinBonus || 0) + (result.leveledUp ? result.newLevel * 5 : 0);
@@ -231,7 +249,10 @@ export async function POST(req: Request) {
       if (streakUpd.milestone) {
         await logEvent(db, roomId, 'streak.milestone', `Đạt chuỗi ${streakUpd.milestone} ngày chăm pet! 🔥`, { emoji: '🔥', payload: { milestone: streakUpd.milestone } });
       }
-      return ok({ room: normalizeRoom(rows[0]) });
+      return ok({
+        room: normalizeRoom(rows[0]),
+        care: { wasted: false, message: result.message, xpGain: result.xpGain, coinGain, leveledUp: result.leveledUp }
+      });
     }
 
     // ---- shop: buy ----
@@ -331,6 +352,73 @@ export async function POST(req: Request) {
         await logEvent(db, roomId, 'room.left', `${name || 'Ai đó'} rời room`, { actorClientId: clientId, actorName: name, emoji: '👋' });
       }
       return ok({ room: normalizeRoom(rows[0]) });
+    }
+
+    // ---- sulk / giận ----
+    if (type === 'sulk') {
+      const clientId = String(body.clientId || '').trim();
+      if (!clientId) return fail('Missing clientId');
+      const sub = String(body.sulkAction || '');
+      const existing = await db`SELECT * FROM rooms WHERE room_id = ${roomId}`;
+      if (!existing[0]) return fail('Room không tồn tại', 404);
+      const cur = existing[0];
+      const isCreator = cur.creator_client_id === clientId;
+      const isPartner = cur.partner_client_id === clientId;
+      if (!isCreator && !isPartner) return fail('Bạn không thuộc room này', 403);
+      const me = (isCreator ? cur.creator_name : cur.partner_name) || 'Người ấy';
+      const sulk = normalizeSulk(cur.sulk);
+
+      if (sub === 'start') {
+        const reasons = (Array.isArray(body.reasons) ? body.reasons : []).map(String).filter(Boolean).slice(0, 5);
+        if (!reasons.length) return fail('Chọn ít nhất 1 lý do giận');
+        const hint = String(body.hint || '').trim().slice(0, 120) || null;
+        const next: SulkState = {
+          active: true,
+          byClientId: clientId,
+          byName: me,
+          reasons,
+          reasonCount: reasons.length,
+          hint,
+          guesses: [],
+          startedAt: new Date().toISOString(),
+          resolvedAt: null
+        };
+        const rows = await db`UPDATE rooms SET sulk = ${JSON.stringify(next)}::jsonb, updated_at = NOW() WHERE room_id = ${roomId} RETURNING *`;
+        await logEvent(db, roomId, 'sulk.start', `${me} đang giận 😤`, { actorClientId: clientId, actorName: me, emoji: '😤' });
+        await pushToRoom(db, roomId, clientId, { title: `${me} đang giận 😤`, body: 'Mở app và đoán xem vì sao nhé!', url: `/room/${roomId}`, tag: 'sulk' });
+        return ok({ room: redactRoomSulk(normalizeRoom(rows[0])!, clientId) });
+      }
+
+      if (sub === 'guess') {
+        if (!sulk.active) return fail('Không có ai đang giận cả');
+        if (sulk.byClientId === clientId) return fail('Bạn là người đang giận mà 😤');
+        const guess = String(body.guess || '');
+        const correct = sulk.reasons.includes(guess);
+        sulk.guesses = [...sulk.guesses, { text: guess, correct, at: new Date().toISOString(), by: me }].slice(-30);
+        if (correct) {
+          sulk.active = false;
+          sulk.resolvedAt = new Date().toISOString();
+        }
+        const rows = await db`UPDATE rooms SET sulk = ${JSON.stringify(sulk)}::jsonb, coins = coins + ${correct ? 5 : 0}, updated_at = NOW() WHERE room_id = ${roomId} RETURNING *`;
+        if (correct) {
+          await logEvent(db, roomId, 'sulk.resolved', `${me} đã đoán đúng và làm hòa 💗`, { actorClientId: clientId, actorName: me, emoji: '💗' });
+          await pushToRoom(db, roomId, clientId, { title: 'Làm hòa rồi 💗', body: `${me} đã đoán đúng lý do!`, url: `/room/${roomId}`, tag: 'sulk' });
+        } else {
+          await logEvent(db, roomId, 'sulk.guess', `${me} đoán sai lý do...`, { actorClientId: clientId, actorName: me, emoji: '❓' });
+        }
+        return ok({ room: redactRoomSulk(normalizeRoom(rows[0])!, clientId) });
+      }
+
+      if (sub === 'forgive' || sub === 'cancel') {
+        if (sulk.byClientId && sulk.byClientId !== clientId) return fail('Chỉ người đang giận mới làm điều này');
+        sulk.active = false;
+        sulk.resolvedAt = new Date().toISOString();
+        const rows = await db`UPDATE rooms SET sulk = ${JSON.stringify(sulk)}::jsonb, updated_at = NOW() WHERE room_id = ${roomId} RETURNING *`;
+        await logEvent(db, roomId, 'sulk.forgive', `${me} đã hết giận, làm hòa 💗`, { actorClientId: clientId, actorName: me, emoji: '💗' });
+        return ok({ room: redactRoomSulk(normalizeRoom(rows[0])!, clientId) });
+      }
+
+      return fail('Unknown sulk action');
     }
 
     // ---- live touch (hold hands) ----

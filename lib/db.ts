@@ -4,6 +4,7 @@ import { DEFAULT_THEME } from './theme';
 import { applyDecay, DEFAULT_PET } from './pet';
 import { DEFAULT_INVENTORY, normalizeInventory } from './shop';
 import { DEFAULT_STREAK, normalizeStreak } from './streak';
+import { normalizeSulk } from './sulk';
 
 let sql: NeonQueryFunction<false, false> | null = null;
 let initialized = false;
@@ -61,6 +62,7 @@ export async function initDb(): Promise<void> {
       partner_left_at TIMESTAMPTZ,
       creator_touch_at TIMESTAMPTZ,
       partner_touch_at TIMESTAMPTZ,
+      sulk JSONB NOT NULL DEFAULT '{}'::jsonb,
       counts JSONB NOT NULL DEFAULT '{}'::jsonb,
       total INTEGER NOT NULL DEFAULT 0,
       session_seconds INTEGER NOT NULL DEFAULT 0,
@@ -82,6 +84,7 @@ export async function initDb(): Promise<void> {
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS coins INTEGER NOT NULL DEFAULT 0`;
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS creator_touch_at TIMESTAMPTZ`;
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS partner_touch_at TIMESTAMPTZ`;
+  await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS sulk JSONB NOT NULL DEFAULT '{}'::jsonb`;
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS inventory JSONB NOT NULL DEFAULT '{}'::jsonb`;
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS streak JSONB NOT NULL DEFAULT '{}'::jsonb`;
   await db`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS theme_config JSONB NOT NULL DEFAULT '{}'::jsonb`;
@@ -175,6 +178,7 @@ export function normalizeRoom(row: Row | null | undefined, nowMs = Date.now()): 
     partnerLeftAt: row.partner_left_at,
     creatorTouchAt: row.creator_touch_at,
     partnerTouchAt: row.partner_touch_at,
+    sulk: normalizeSulk(row.sulk),
     counts: row.counts || {},
     total: row.total || 0,
     sessionSeconds: row.session_seconds || 0,

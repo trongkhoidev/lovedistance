@@ -15,9 +15,9 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
   );
 });
 
-export function CardTitle({ children, icon }: { children: React.ReactNode; icon?: string }) {
+export function CardTitle({ children, icon, className = '' }: { children: React.ReactNode; icon?: string; className?: string }) {
   return (
-    <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-bold text-text">
+    <h3 className={`mb-3 flex items-center gap-2 font-display text-lg font-bold text-text ${className}`}>
       {icon && <span aria-hidden>{icon}</span>}
       {children}
     </h3>

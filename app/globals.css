@@ -3,37 +3,39 @@
 @tailwind utilities;
 
 :root {
-  /* Ocean — light (default) */
-  --c-bg: 238 249 255;
+  /* Cute modern — light (default) */
+  --c-bg: 244 250 255;
   --c-surface: 255 255 255;
-  --c-surface-2: 227 244 251;
-  --c-border: 199 226 240;
-  --c-primary: 14 165 233;
+  --c-surface-2: 238 245 255;
+  --c-border: 224 230 245;
+  --c-primary: 20 184 220;
+  --c-grape: 139 92 246;
   --c-teal: 45 212 191;
   --c-aqua: 125 211 252;
-  --c-deep: 12 74 110;
-  --c-love: 251 113 133;
+  --c-deep: 76 29 149;
+  --c-love: 244 114 154;
   --c-sun: 251 191 36;
-  --c-text: 11 58 82;
-  --c-muted: 91 135 160;
-  --c-shadow: 12 74 110;
+  --c-text: 30 41 84;
+  --c-muted: 116 125 160;
+  --c-shadow: 99 102 241;
 }
 
 .dark {
-  /* Ocean night */
-  --c-bg: 7 38 58;
-  --c-surface: 14 53 80;
-  --c-surface-2: 20 67 99;
-  --c-border: 51 99 134;
-  --c-primary: 56 189 248;
+  /* Cute modern — night */
+  --c-bg: 18 18 38;
+  --c-surface: 30 31 58;
+  --c-surface-2: 41 43 76;
+  --c-border: 60 62 104;
+  --c-primary: 56 200 235;
+  --c-grape: 167 139 250;
   --c-teal: 45 212 191;
   --c-aqua: 125 211 252;
-  --c-deep: 125 211 252;
+  --c-deep: 196 181 253;
   --c-love: 251 113 133;
   --c-sun: 251 191 36;
-  --c-text: 224 243 255;
-  --c-muted: 127 176 201;
-  --c-shadow: 2 12 22;
+  --c-text: 233 233 255;
+  --c-muted: 148 152 196;
+  --c-shadow: 5 5 18;
 }
 
 @layer base {
@@ -46,9 +48,9 @@
   body {
     @apply bg-bg text-text font-sans antialiased;
     background-image:
-      radial-gradient(900px 500px at 12% -8%, rgb(var(--c-aqua) / 0.35), transparent 60%),
-      radial-gradient(800px 520px at 100% 0%, rgb(var(--c-teal) / 0.22), transparent 55%),
-      radial-gradient(700px 600px at 50% 110%, rgb(var(--c-primary) / 0.18), transparent 60%);
+      radial-gradient(900px 500px at 10% -8%, rgb(var(--c-aqua) / 0.30), transparent 60%),
+      radial-gradient(820px 520px at 100% 0%, rgb(var(--c-grape) / 0.20), transparent 55%),
+      radial-gradient(760px 620px at 50% 112%, rgb(var(--c-love) / 0.16), transparent 60%);
     background-attachment: fixed;
     min-height: 100dvh;
   }
@@ -76,13 +78,19 @@
     @apply rounded-pill px-3 py-1 text-sm font-semibold;
   }
   .grad-text {
-    @apply bg-gradient-to-r from-primary via-teal to-aqua bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary via-grape to-love bg-clip-text text-transparent;
   }
   .grad-primary {
-    background-image: linear-gradient(135deg, rgb(var(--c-primary)), rgb(var(--c-teal)));
+    background-image: linear-gradient(135deg, rgb(var(--c-primary)), rgb(var(--c-grape)));
+  }
+  .grad-fun {
+    background-image: linear-gradient(120deg, rgb(var(--c-primary)), rgb(var(--c-grape)) 55%, rgb(var(--c-love)));
   }
   .focus-ring {
-    @apply outline-none focus-visible:ring-4 focus-visible:ring-primary/30;
+    @apply outline-none focus-visible:ring-4 focus-visible:ring-primary/25;
+  }
+  .card-hover {
+    @apply transition-transform duration-200 hover:-translate-y-0.5;
   }
 }
 

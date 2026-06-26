@@ -2,13 +2,13 @@
 
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
-import { MOOD_LABEL, PET_EMOJI, xpProgress } from '@/lib/pet';
+import { isSick, MOOD_LABEL, PET_EMOJI, petStage, xpProgress } from '@/lib/pet';
 import { SHOP_MAP } from '@/lib/shop';
 import type { Inventory, Pet } from '@/lib/types';
 
 const MOOD_FACE: Record<string, string> = {
   sleepy: '😴', hungry: '🥺', thirsty: '😣', messy: '😖', joyful: '😆',
-  sad: '😢', content: '😊', excited: '🤩', loved: '🥰', curious: '🙂'
+  sad: '😢', content: '😊', excited: '🤩', loved: '🥰', curious: '🙂', sick: '🤒', tired: '🥵'
 };
 
 const SCENE_TINT: Record<string, [string, string]> = {
@@ -31,6 +31,8 @@ export function AquariumStage({ pet, inventory, reaction, height = 300 }: Props)
   const scene = inventory.equipped.scene;
   const tint = (scene && SCENE_TINT[scene]) || ['#0891b2', '#0c4a6e'];
   const xp = xpProgress(pet);
+  const stage = petStage(pet.level);
+  const sick = isSick(pet);
 
   const bubbles = useMemo(
     () => Array.from({ length: 9 }).map((_, i) => ({ id: i, left: 6 + i * 10 + (i % 3) * 3, size: 6 + (i % 4) * 5, dur: 4 + (i % 5), delay: -(i * 0.7) })),
@@ -88,12 +90,14 @@ export function AquariumStage({ pet, inventory, reaction, height = 300 }: Props)
             key={reaction?.id}
             animate={reaction ? { scale: [1, 1.3, 0.95, 1], rotate: [0, -10, 10, 0] } : {}}
             transition={{ duration: 0.7 }}
-            className="relative text-[5.5rem] leading-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.35)]"
+            className="relative leading-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.35)]"
+            style={{ fontSize: `${5.5 * stage.scale}rem`, filter: sick ? 'grayscale(0.45) brightness(0.92)' : 'none' }}
           >
             {base}
             {hat && <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-5xl">{hat}</span>}
             {outfit && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-4xl">{outfit}</span>}
             <span className="absolute -right-2 -top-2 rounded-full bg-white/90 px-1 text-2xl shadow">{face}</span>
+            {sick && <span className="absolute -left-3 top-0 text-3xl">🤒</span>}
           </motion.div>
           {reaction && (
             <motion.span

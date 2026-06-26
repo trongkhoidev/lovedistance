@@ -1,5 +1,13 @@
 import type { PetActionKey, RankMetric, RankPeriod, RankRow, Room, RoomAction, RoomEvent, ThemeConfig } from './types';
 
+export interface CareFeedback {
+  wasted: boolean;
+  message: string;
+  xpGain: number;
+  coinGain: number;
+  leveledUp: boolean;
+}
+
 async function post<T = { room: Room }>(body: Record<string, unknown>): Promise<T> {
   const res = await fetch('/api/rooms', {
     method: 'POST',
@@ -18,18 +26,19 @@ export const api = {
   async joinRoom(roomId: string, name: string, clientId: string) {
     return post({ type: 'join', roomId, name, clientId });
   },
-  async getRoom(roomId: string): Promise<{ room: Room }> {
-    const res = await fetch(`/api/rooms?roomId=${encodeURIComponent(roomId)}`, { cache: 'no-store' });
+  async getRoom(roomId: string, clientId?: string): Promise<{ room: Room }> {
+    const q = clientId ? `&clientId=${encodeURIComponent(clientId)}` : '';
+    const res = await fetch(`/api/rooms?roomId=${encodeURIComponent(roomId)}${q}`, { cache: 'no-store' });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error || 'Không tải được room');
     return data;
   },
-  async sendAction(roomId: string, action: RoomAction, actorName: string, clientId?: string) {
+  async sendAction(roomId: string, action: RoomAction, actorName: string, clientId?: string, level = 1, note?: string) {
     const message = action.message.replace('{name}', actorName || 'Ai đó');
-    return post({ type: 'action', roomId, key: action.key, emoji: action.emoji, message, actorName, clientId });
+    return post({ type: 'action', roomId, key: action.key, emoji: action.emoji, message, actorName, clientId, level, note });
   },
   async carePet(roomId: string, petAction: PetActionKey, actorName?: string, clientId?: string) {
-    return post({ type: 'pet', roomId, petAction, actorName, clientId });
+    return post<{ room: Room; care?: CareFeedback }>({ type: 'pet', roomId, petAction, actorName, clientId });
   },
   async updatePet(roomId: string, patch: { name?: string; petType?: string }) {
     return post({ type: 'pet', roomId, ...patch });
@@ -51,6 +60,15 @@ export const api = {
   },
   async touch(roomId: string, clientId: string, state: 'start' | 'ping' | 'end') {
     return post({ type: 'touch', roomId, clientId, state });
+  },
+  async sulkStart(roomId: string, clientId: string, reasons: string[], hint: string) {
+    return post({ type: 'sulk', sulkAction: 'start', roomId, clientId, reasons, hint });
+  },
+  async sulkGuess(roomId: string, clientId: string, guess: string) {
+    return post({ type: 'sulk', sulkAction: 'guess', roomId, clientId, guess });
+  },
+  async sulkForgive(roomId: string, clientId: string) {
+    return post({ type: 'sulk', sulkAction: 'forgive', roomId, clientId });
   },
   async leave(roomId: string, clientId: string) {
     return fetch('/api/rooms', {

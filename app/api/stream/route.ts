@@ -1,4 +1,5 @@
 import { ApiError, getSql, initDb, normalizeRoom } from '@/lib/db';
+import { redactRoomSulk } from '@/lib/sulk';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -71,7 +72,7 @@ export async function GET(req: Request) {
           if (updated !== lastUpdated) {
             lastUpdated = updated;
             const rows = await db`SELECT * FROM rooms WHERE room_id = ${roomId}`;
-            send('room', { room: normalizeRoom(rows[0]) });
+            send('room', { room: redactRoomSulk(normalizeRoom(rows[0])!, clientId || null) });
           }
 
           if (maxEvent > lastEventId) {

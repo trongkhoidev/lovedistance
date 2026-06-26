@@ -9,6 +9,7 @@ import { Card, CardTitle } from '@/components/ui/Card';
 import { ParticleField } from '@/components/ui/ParticleField';
 import { useToast } from '@/components/providers/ToastProvider';
 import { CoupleHeader } from '@/components/room/CoupleHeader';
+import { RoomSidebar } from '@/components/room/RoomSidebar';
 import { ActionGrid } from '@/components/room/ActionGrid';
 import { StatsCard } from '@/components/room/StatsCard';
 import { EventLog } from '@/components/room/EventLog';
@@ -18,6 +19,7 @@ import { MediaUpload } from '@/components/room/MediaUpload';
 import { FeedbackCard } from '@/components/room/FeedbackCard';
 import { IncomingPopup, type Incoming } from '@/components/room/IncomingPopup';
 import { EmotionFX, type FxEvent } from '@/components/room/EmotionFX';
+import { SulkStartModal, SulkBanner, SulkLockScreen } from '@/components/room/SulkMode';
 import { AquariumStage } from '@/components/aquarium/AquariumStage';
 import { PetStatsPanel } from '@/components/pet/PetStatsPanel';
 import { PetActions } from '@/components/pet/PetActions';
@@ -31,6 +33,7 @@ import { useClientId } from '@/hooks/useClientId';
 import { useLiveRoom } from '@/hooks/useLiveRoom';
 import { useSeason } from '@/hooks/useSeason';
 import { api } from '@/lib/api-client';
+import { playSound, startHeartbeat, stopHeartbeat } from '@/lib/sounds';
 import { readPrefs } from '@/lib/storage';
 import { themeCssVars } from '@/lib/theme';
 import type { PetActionKey, Room, RoomAction, RoomBackground, ThemeConfig } from '@/lib/types';
@@ -44,6 +47,14 @@ const TABS: { value: Tab; label: string; icon: string }[] = [
   { value: 'memory', label: 'Kỷ niệm', icon: '📖' },
   { value: 'settings', label: 'Tùy chỉnh', icon: '⚙️' }
 ];
+
+const SEND_SOUND: Record<string, 'kiss' | 'hug' | 'heart' | 'miss' | 'angry'> = {
+  kiss: 'kiss',
+  hug: 'hug',
+  heart: 'heart',
+  miss: 'miss',
+  angry: 'angry'
+};
 
 export default function RoomPage() {
   const params = useParams();
@@ -64,16 +75,20 @@ export default function RoomPage() {
   const [fx, setFx] = useState<FxEvent | null>(null);
   const [busyPet, setBusyPet] = useState(false);
   const [showWaiting, setShowWaiting] = useState(true);
+  const [showSulkModal, setShowSulkModal] = useState(false);
+  const [lastWrong, setLastWrong] = useState<number | null>(null);
+  const [myHolding, setMyHolding] = useState(false);
 
   const joinAttempted = useRef(false);
   const seenEventId = useRef<number | null>(null);
   const prevLevel = useRef<number | null>(null);
   const fxId = useRef(0);
   const touchPing = useRef<ReturnType<typeof setInterval> | null>(null);
+  const wasLocked = useRef(false);
 
-  const playFx = useCallback((key: string, emoji: string, mine: boolean, actorName?: string) => {
+  const playFx = useCallback((key: string, emoji: string, mine: boolean, actorName?: string, intensity = 1, note?: string) => {
     fxId.current += 1;
-    setFx({ id: fxId.current, key, emoji, mine, actorName });
+    setFx({ id: fxId.current, key, emoji, mine, actorName, intensity, note });
   }, []);
 
   // ---- membership / auto-join ----
@@ -126,9 +141,13 @@ export default function RoomPage() {
       seenEventId.current = latest.id;
       const partnerAction = [...fresh].reverse().find((e) => e.event_type === 'action.sent' && e.actor_name && e.actor_name !== presence.myName);
       if (partnerAction) {
-        const key = (partnerAction.payload as { key?: string } | null)?.key || '';
+        const payload = partnerAction.payload as { key?: string; level?: number; note?: string } | null;
+        const key = payload?.key || '';
+        const level = payload?.level || 1;
+        const note = payload?.note || undefined;
         setIncoming({ id: partnerAction.id, emoji: partnerAction.emoji || '💕', message: partnerAction.message, key });
-        playFx(key, partnerAction.emoji || '💕', false, partnerAction.actor_name || undefined);
+        playFx(key, partnerAction.emoji || '💕', false, partnerAction.actor_name || undefined, level, note);
+        playSound(SEND_SOUND[key] || 'send');
         navigator.vibrate?.(40);
         setTimeout(() => setIncoming((cur) => (cur?.id === partnerAction.id ? null : cur)), 3500);
       }
@@ -154,8 +173,31 @@ export default function RoomPage() {
   useEffect(() => {
     return () => {
       if (touchPing.current) clearInterval(touchPing.current);
+      stopHeartbeat();
     };
   }, []);
+
+  // play danger sound when I become locked by a sulk
+  useEffect(() => {
+    const locked = !!room?.sulk?.active && !!room.sulk.byClientId && room.sulk.byClientId !== clientId;
+    if (locked && !wasLocked.current) {
+      playSound('lock');
+      navigator.vibrate?.([100, 50, 100, 50, 200]);
+    }
+    wasLocked.current = locked;
+  }, [room?.sulk?.active, room?.sulk?.byClientId, clientId]);
+
+  // synced heartbeat sound while both are holding hands
+  useEffect(() => {
+    if (!room) {
+      stopHeartbeat();
+      return;
+    }
+    const pTouchAt = presence.iAmCreator ? room.partnerTouchAt : room.creatorTouchAt;
+    const pTouching = !!pTouchAt && Date.now() - new Date(pTouchAt).getTime() < 6000;
+    if (myHolding && pTouching) startHeartbeat();
+    else stopHeartbeat();
+  }, [myHolding, room, presence.iAmCreator]);
 
   const effectiveTheme: ThemeConfig | undefined = useMemo(() => {
     if (!room) return undefined;
@@ -170,10 +212,10 @@ export default function RoomPage() {
 
   // ---- mutations ----
   const sendAction = useCallback(
-    async (action: RoomAction) => {
-      playFx(action.key, action.emoji, true);
+    async (action: RoomAction, level = 1, note?: string) => {
+      playFx(action.key, action.emoji, true, undefined, level, note);
       try {
-        const res = await api.sendAction(roomId, action, presence.myName, clientId);
+        const res = await api.sendAction(roomId, action, presence.myName, clientId, level, note);
         applyRoom(res.room);
         pokeEvents();
       } catch (e) {
@@ -186,12 +228,16 @@ export default function RoomPage() {
   const echo = useCallback(
     (key: string) => {
       const a = room?.actions.find((x) => x.key === key);
-      if (a) sendAction(a);
+      if (a) {
+        playSound('send');
+        sendAction(a, 2);
+      }
     },
     [room, sendAction]
   );
 
   const onHoldStart = useCallback(() => {
+    setMyHolding(true);
     api.touch(roomId, clientId, 'start').then((r) => applyRoom(r.room)).catch(() => {});
     if (touchPing.current) clearInterval(touchPing.current);
     touchPing.current = setInterval(() => {
@@ -200,14 +246,62 @@ export default function RoomPage() {
   }, [roomId, clientId, applyRoom]);
 
   const onHoldEnd = useCallback(() => {
+    setMyHolding(false);
     if (touchPing.current) {
       clearInterval(touchPing.current);
       touchPing.current = null;
     }
     api.touch(roomId, clientId, 'end').then((r) => applyRoom(r.room)).catch(() => {});
     const a = room?.actions.find((x) => x.key === 'hold-hand');
-    if (a) sendAction(a);
+    if (a) {
+      playSound('send');
+      sendAction(a, 2);
+    }
   }, [roomId, clientId, room, applyRoom, sendAction]);
+
+  const startSulk = useCallback(
+    (reasons: string[], hint: string) => {
+      setShowSulkModal(false);
+      playSound('angry');
+      api.sulkStart(roomId, clientId, reasons, hint).then((r) => applyRoom(r.room)).catch((e) => toast((e as Error).message, 'error'));
+    },
+    [roomId, clientId, applyRoom, toast]
+  );
+
+  const guessSulk = useCallback(
+    async (id: string) => {
+      try {
+        const res = await api.sulkGuess(roomId, clientId, id);
+        applyRoom(res.room);
+        if (!res.room.sulk.active) {
+          playSound('makeup');
+          playFx('heart', '💗', true, undefined, 3);
+          toast('Đoán đúng rồi! Làm hòa thôi 💗', 'success');
+        } else {
+          playSound('wrong');
+          navigator.vibrate?.([20, 50, 20]);
+          setLastWrong(Date.now());
+          setTimeout(() => setLastWrong(null), 800);
+        }
+      } catch (e) {
+        toast((e as Error).message, 'error');
+      }
+    },
+    [roomId, clientId, applyRoom, playFx, toast]
+  );
+
+  const apologize = useCallback(() => {
+    const a = room?.actions.find((x) => x.key === 'miss') || room?.actions.find((x) => x.key === 'kiss');
+    if (a) {
+      playSound(a.key === 'kiss' ? 'kiss' : 'miss');
+      sendAction(a, 2);
+    }
+  }, [room, sendAction]);
+
+  const forgive = useCallback(() => {
+    playSound('makeup');
+    api.sulkForgive(roomId, clientId).then((r) => applyRoom(r.room)).catch((e) => toast((e as Error).message, 'error'));
+  }, [roomId, clientId, applyRoom, toast]);
 
   const carePet = useCallback(
     async (action: PetActionKey) => {
@@ -219,6 +313,10 @@ export default function RoomPage() {
         const res = await api.carePet(roomId, action, presence.myName, clientId);
         applyRoom(res.room);
         pokeEvents();
+        if (res.care) {
+          if (res.care.wasted) toast(res.care.message, 'warn');
+          else toast(`${res.care.message} (+${res.care.xpGain} XP${res.care.coinGain ? `, +${res.care.coinGain}🪙` : ''})`, 'success');
+        }
       } catch (e) {
         toast((e as Error).message, 'error');
       } finally {
@@ -363,6 +461,14 @@ export default function RoomPage() {
   const partnerTouchAt = presence.iAmCreator ? room.partnerTouchAt : room.creatorTouchAt;
   const partnerTouching = !!partnerTouchAt && Date.now() - new Date(partnerTouchAt).getTime() < 6000;
 
+  const sulk = room.sulk;
+  const amSulker = sulk.active && sulk.byClientId === clientId;
+  const amLocked = sulk.active && !!sulk.byClientId && sulk.byClientId !== clientId;
+  const canSulk = !!room.partnerClientId && !sulk.active;
+
+  const todayStr = new Date().toDateString();
+  const todayCount = events.filter((e) => e.event_type === 'action.sent' && new Date(e.created_at).toDateString() === todayStr).length;
+
   return (
     <div style={accentVars} className="relative min-h-dvh pb-24 sm:pb-6">
       <ParticleField kind={effectiveTheme?.particles || 'bubbles'} count={14} glyphs={season?.glyphs} />
@@ -370,34 +476,40 @@ export default function RoomPage() {
 
       <CoupleHeader room={room} presence={presence} onLeave={leave} />
 
-      <main className="relative z-10 mx-auto max-w-6xl px-3 py-4 sm:px-4">
-        <SeasonBanner season={season} />
-        {/* presence banner */}
-        <AnimatePresence>
-          {presence.bothOnline && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mb-3 flex items-center justify-center gap-2 rounded-pill bg-teal/15 py-1.5 text-sm font-bold text-teal"
-            >
-              <span className="h-2 w-2 animate-pulse rounded-full bg-teal" /> Cả hai đang online — khoảnh khắc bên nhau 💞
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <div className="relative z-10 mx-auto max-w-7xl px-3 sm:px-4 lg:px-6">
+        <div className="lg:grid lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-6 lg:py-5">
+          <RoomSidebar
+            items={TABS}
+            tab={tab}
+            setTab={(v) => setTab(v as Tab)}
+            room={room}
+            presence={presence}
+            className="hidden lg:block"
+          />
 
-        {/* desktop tab bar */}
-        <div className="mb-4 hidden gap-1 rounded-pill bg-surface/70 p-1 backdrop-blur sm:flex">
-          {TABS.map((t) => (
-            <TabButton key={t.value} active={tab === t.value} onClick={() => setTab(t.value)} {...t} />
-          ))}
-          <Link href="/ranking" className="ml-auto">
-            <Button variant="soft" size="sm">🏆 Bảng xếp hạng</Button>
-          </Link>
-        </div>
+          <main className="min-w-0 py-4 pb-24 lg:py-0 lg:pb-6">
+            <SeasonBanner season={season} />
 
-        {/* content */}
-        <AnimatePresence mode="wait">
+            <AnimatePresence>
+              {presence.bothOnline && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="mb-3 flex items-center justify-center gap-2 rounded-pill bg-teal/15 py-1.5 text-sm font-bold text-teal"
+                >
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-teal" /> Cả hai đang online — khoảnh khắc bên nhau 💞
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* mobile section heading */}
+            <h1 className="mb-3 font-display text-2xl font-black text-text lg:hidden">
+              {TABS.find((t) => t.value === tab)?.icon} {TABS.find((t) => t.value === tab)?.label}
+            </h1>
+
+            {/* content */}
+            <AnimatePresence mode="wait">
           <motion.div
             key={tab}
             initial={{ opacity: 0, y: 10 }}
@@ -408,14 +520,18 @@ export default function RoomPage() {
             {tab === 'home' && (
               <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
                 <div className="space-y-4">
+                  {amSulker && <SulkBanner sulk={sulk} onForgive={forgive} />}
                   <ActionGrid
                     room={room}
                     partnerName={presence.partnerName}
                     partnerTouching={partnerTouching}
                     partnerOnline={presence.partner.online}
+                    todayCount={todayCount}
                     onSend={sendAction}
                     onHoldStart={onHoldStart}
                     onHoldEnd={onHoldEnd}
+                    canSulk={canSulk}
+                    onOpenSulk={() => setShowSulkModal(true)}
                   />
                   <StatsCard room={room} />
                 </div>
@@ -431,7 +547,7 @@ export default function RoomPage() {
                   <Card>
                     <AquariumStage pet={room.pet} inventory={room.inventory} reaction={reaction} />
                     <div className="mt-4">
-                      <PetActions onAction={carePet} busy={busyPet} />
+                      <PetActions pet={room.pet} onAction={carePet} busy={busyPet} />
                     </div>
                   </Card>
                 </div>
@@ -485,25 +601,34 @@ export default function RoomPage() {
                 </Card>
               </div>
             )}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+            </motion.div>
+            </AnimatePresence>
+          </main>
+        </div>
+      </div>
 
       {/* mobile bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-surface/90 backdrop-blur-md sm:hidden">
-        <div className="flex">
-          {TABS.map((t) => (
-            <button
-              key={t.value}
-              onClick={() => setTab(t.value)}
-              className={`focus-ring flex flex-1 flex-col items-center gap-0.5 py-2 text-[0.65rem] font-bold transition-colors ${
-                tab === t.value ? 'text-primary' : 'text-muted'
-              }`}
-            >
-              <span className="text-xl">{t.icon}</span>
-              {t.label}
-            </button>
-          ))}
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-surface/90 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
+        <div className="flex items-center justify-between">
+          {TABS.map((t) => {
+            const active = tab === t.value;
+            return (
+              <button
+                key={t.value}
+                onClick={() => setTab(t.value)}
+                className="focus-ring relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[0.62rem] font-bold"
+              >
+                <span
+                  className={`grid h-9 w-9 place-items-center rounded-2xl text-xl transition-all ${
+                    active ? 'grad-fun text-white shadow-pop' : 'text-muted'
+                  }`}
+                >
+                  {t.icon}
+                </span>
+                <span className={active ? 'text-primary' : 'text-muted'}>{t.label}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
 
@@ -511,25 +636,14 @@ export default function RoomPage() {
       <EmotionFX fx={fx} onDone={() => setFx(null)} />
       <LevelUpBurst level={levelUp} />
 
+      <AnimatePresence>
+        {amLocked && <SulkLockScreen sulk={sulk} onGuess={guessSulk} onApologize={apologize} lastWrong={lastWrong} />}
+      </AnimatePresence>
+      {showSulkModal && <SulkStartModal onConfirm={startSulk} onClose={() => setShowSulkModal(false)} />}
+
       {/* waiting overlay */}
       <AnimatePresence>{waiting && <WaitingOverlay roomId={roomId} onDismiss={() => setShowWaiting(false)} />}</AnimatePresence>
     </div>
-  );
-}
-
-function TabButton({ active, onClick, label, icon }: { active: boolean; onClick: () => void; label: string; icon: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`focus-ring relative rounded-pill px-4 py-2 text-sm font-bold transition-colors ${
-        active ? 'text-white' : 'text-muted hover:text-text'
-      }`}
-    >
-      {active && <motion.span layoutId="room-tab" className="grad-primary absolute inset-0 rounded-pill shadow-pop" />}
-      <span className="relative z-10">
-        {icon} {label}
-      </span>
-    </button>
   );
 }
 

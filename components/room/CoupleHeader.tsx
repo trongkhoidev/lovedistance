@@ -1,8 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { SoundToggle } from '@/components/ui/SoundToggle';
 import { useToast } from '@/components/providers/ToastProvider';
 import type { Room } from '@/lib/types';
 import type { getPresence } from '@/lib/presence';
@@ -22,9 +24,16 @@ export function CoupleHeader({ room, presence, onLeave }: Props) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-surface/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
-        <div className="flex min-w-0 items-center gap-2">
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-surface/75 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 lg:px-6">
+        {/* brand */}
+        <Link href="/" className="flex items-center gap-2">
+          <span className="grid h-9 w-9 place-items-center rounded-2xl grad-fun text-lg shadow-pop">🌊</span>
+          <span className="hidden font-display text-lg font-black grad-text md:block">LoveDistance</span>
+        </Link>
+
+        {/* couple */}
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <Avatar name={presence.myName} self online={presence.me.online} />
           <motion.span
             className="text-love"
@@ -36,16 +45,23 @@ export function CoupleHeader({ room, presence, onLeave }: Props) {
           <Avatar name={presence.partnerName || 'Chưa vào'} online={presence.partner.online} />
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+          <span className="hidden items-center gap-1 rounded-pill bg-sun/15 px-2.5 py-1 text-sm font-black text-sun sm:flex">
+            🪙 {room.coins}
+          </span>
           <button
             onClick={copyCode}
-            className="focus-ring hidden rounded-pill bg-primary/10 px-3 py-1.5 font-display text-sm font-bold tracking-widest text-primary sm:block"
+            className="focus-ring hidden rounded-pill bg-primary/10 px-3 py-1.5 font-display text-sm font-black tracking-widest text-primary sm:block"
           >
             {room.roomId}
           </button>
+          <Link href="/ranking" aria-label="Bảng xếp hạng" className="focus-ring grid h-9 w-9 place-items-center rounded-full bg-surface-2 text-lg shadow-soft lg:hidden">
+            🏆
+          </Link>
+          <SoundToggle />
           <ThemeToggle />
           <Button variant="ghost" size="sm" onClick={onLeave}>
-            Thoát 👋
+            <span className="hidden sm:inline">Thoát</span> 👋
           </Button>
         </div>
       </div>
@@ -54,12 +70,11 @@ export function CoupleHeader({ room, presence, onLeave }: Props) {
 }
 
 function Avatar({ name, self, online }: { name: string; self?: boolean; online?: boolean }) {
-  const initial = (name || '?').trim().charAt(0).toUpperCase();
   return (
     <div className="flex min-w-0 items-center gap-1.5">
       <div className="relative">
         <div
-          className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white ${
+          className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white shadow-soft ${
             self ? 'grad-primary' : 'bg-love'
           }`}
         >
@@ -71,7 +86,7 @@ function Avatar({ name, self, online }: { name: string; self?: boolean; online?:
           }`}
         />
       </div>
-      <div className="hidden min-w-0 leading-tight sm:block">
+      <div className="hidden min-w-0 leading-tight lg:block">
         <div className="truncate text-sm font-bold">{name || '...'}</div>
         <div className="text-[0.65rem] text-muted">{self ? 'Bạn' : online ? 'Đang online' : 'Offline'}</div>
       </div>

@@ -15,6 +15,7 @@ const config: Config = {
         'surface-2': 'rgb(var(--c-surface-2) / <alpha-value>)',
         border: 'rgb(var(--c-border) / <alpha-value>)',
         primary: 'rgb(var(--c-primary) / <alpha-value>)',
+        grape: 'rgb(var(--c-grape) / <alpha-value>)',
         teal: 'rgb(var(--c-teal) / <alpha-value>)',
         aqua: 'rgb(var(--c-aqua) / <alpha-value>)',
         deep: 'rgb(var(--c-deep) / <alpha-value>)',
@@ -28,13 +29,13 @@ const config: Config = {
         display: ['var(--font-fredoka)', 'var(--font-nunito)', 'sans-serif']
       },
       borderRadius: {
-        card: '1.5rem',
+        card: '1.75rem',
         pill: '999px'
       },
       boxShadow: {
-        soft: '0 18px 50px -18px rgb(var(--c-shadow) / 0.45)',
+        soft: '0 18px 45px -20px rgb(var(--c-shadow) / 0.40)',
         glow: '0 0 0 4px rgb(var(--c-primary) / 0.15)',
-        pop: '0 10px 30px -10px rgb(var(--c-primary) / 0.5)'
+        pop: '0 12px 28px -12px rgb(var(--c-grape) / 0.55)'
       },
       keyframes: {
         bob: {

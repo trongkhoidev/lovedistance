@@ -8,6 +8,8 @@ export interface FxEvent {
   emoji: string;
   mine: boolean; // true if I triggered it, false if partner
   actorName?: string;
+  intensity?: number; // 1..3 (charge level)
+  note?: string; // optional personal message
 }
 
 function rand(min: number, max: number) {
@@ -25,6 +27,7 @@ export function EmotionFX({ fx, onDone }: { fx: FxEvent | null; onDone: () => vo
 
 function Effect({ fx, onDone }: { fx: FxEvent; onDone: () => void }) {
   const key = fx.key;
+  const i = fx.intensity || 1;
   return (
     <motion.div
       className="absolute inset-0"
@@ -33,25 +36,30 @@ function Effect({ fx, onDone }: { fx: FxEvent; onDone: () => void }) {
       exit={{ opacity: 0 }}
       onAnimationComplete={() => setTimeout(onDone, 1400)}
     >
-      {key === 'kiss' && <Kiss />}
-      {key === 'hug' && <Hug />}
+      {key === 'kiss' && <Kiss i={i} />}
+      {key === 'hug' && <Hug i={i} />}
       {key === 'hold-hand' && <HoldHandFx />}
-      {key === 'heart' && <Hearts />}
-      {key === 'miss' && <Miss />}
-      {key === 'angry' && <Angry />}
-      {!['kiss', 'hug', 'hold-hand', 'heart', 'miss', 'angry'].includes(key) && <Burst emoji={fx.emoji} />}
+      {key === 'heart' && <Hearts i={i} />}
+      {key === 'miss' && <Miss i={i} />}
+      {key === 'angry' && <Angry i={i} />}
+      {!['kiss', 'hug', 'hold-hand', 'heart', 'miss', 'angry'].includes(key) && <Burst emoji={fx.emoji} i={i} />}
 
-      {/* who sent it */}
-      {!fx.mine && fx.actorName && (
+      {/* who sent it + personal note */}
+      {!fx.mine && (fx.actorName || fx.note) && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-x-0 top-[18%] text-center"
+          className="absolute inset-x-0 top-[16%] flex flex-col items-center gap-2 px-6 text-center"
         >
-          <span className="rounded-pill bg-black/30 px-4 py-1.5 text-sm font-bold text-white backdrop-blur">
-            từ {fx.actorName} 💌
-          </span>
+          {fx.actorName && (
+            <span className="rounded-pill bg-black/30 px-4 py-1.5 text-sm font-bold text-white backdrop-blur">từ {fx.actorName} 💌</span>
+          )}
+          {fx.note && (
+            <span className="max-w-md rounded-2xl bg-white/90 px-4 py-2 font-display text-base font-bold text-deep shadow-pop">
+              “{fx.note}”
+            </span>
+          )}
         </motion.div>
       )}
     </motion.div>
@@ -60,12 +68,13 @@ function Effect({ fx, onDone }: { fx: FxEvent; onDone: () => void }) {
 
 /* ---------- individual effects ---------- */
 
-function Center({ children, rotate }: { children: React.ReactNode; rotate?: number }) {
+function Center({ children, rotate, i = 1 }: { children: React.ReactNode; rotate?: number; i?: number }) {
+  const peak = 1.4 * i;
   return (
     <motion.div
       initial={{ scale: 0.2, opacity: 0, rotate: rotate ? -rotate : 0 }}
-      animate={{ scale: [0.2, 1.4, 1.1], opacity: [0, 1, 1], rotate: 0 }}
-      exit={{ scale: 1.6, opacity: 0 }}
+      animate={{ scale: [0.2, peak, peak * 0.8], opacity: [0, 1, 1], rotate: 0 }}
+      exit={{ scale: peak * 1.15, opacity: 0 }}
       transition={{ duration: 0.9, ease: 'easeOut' }}
       className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[7rem] drop-shadow-2xl sm:text-[10rem]"
     >
@@ -99,27 +108,27 @@ function Risers({ glyphs, count = 18 }: { glyphs: string[]; count?: number }) {
   );
 }
 
-function Hearts() {
+function Hearts({ i = 1 }: { i?: number }) {
   return (
     <>
       <div className="absolute inset-0 bg-gradient-to-t from-love/20 to-transparent" />
-      <Risers glyphs={['❤️', '💖', '💕', '💗', '🩷']} count={22} />
-      <Center>❤️</Center>
+      <Risers glyphs={['❤️', '💖', '💕', '💗', '🩷']} count={16 + i * 8} />
+      <Center i={i}>❤️</Center>
     </>
   );
 }
 
-function Kiss() {
+function Kiss({ i = 1 }: { i?: number }) {
   return (
     <>
       <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at center, rgb(var(--c-love) / 0.18), transparent 60%)' }} />
-      <Risers glyphs={['💋', '💕', '💗']} count={14} />
-      <Center rotate={12}>💋</Center>
+      <Risers glyphs={['💋', '💕', '💗']} count={10 + i * 6} />
+      <Center rotate={12} i={i}>💋</Center>
     </>
   );
 }
 
-function Hug() {
+function Hug({ i = 1 }: { i?: number }) {
   return (
     <>
       <motion.div
@@ -130,7 +139,7 @@ function Hug() {
       />
       {/* arms closing in */}
       <motion.div initial={{ x: '-60%' }} animate={{ x: '-8%' }} transition={{ duration: 0.7, ease: 'easeOut' }} className="absolute left-0 top-1/2 -translate-y-1/2 text-[6rem] sm:text-[9rem]">🫂</motion.div>
-      <Center>🤗</Center>
+      <Center i={i}>🤗</Center>
     </>
   );
 }
@@ -144,13 +153,13 @@ function HoldHandFx() {
   );
 }
 
-function Miss() {
+function Miss({ i = 1 }: { i?: number }) {
   return (
     <>
       <div className="absolute inset-0 bg-gradient-to-b from-primary/15 to-deep/10" />
-      {Array.from({ length: 30 }).map((_, i) => (
+      {Array.from({ length: 20 + i * 8 }).map((_, n) => (
         <motion.span
-          key={i}
+          key={n}
           className="absolute top-[-5%] text-primary/60"
           style={{ left: `${rand(0, 100)}%`, fontSize: rand(10, 18) }}
           initial={{ y: 0, opacity: 0 }}
@@ -160,12 +169,12 @@ function Miss() {
           💧
         </motion.span>
       ))}
-      <Center>🥺</Center>
+      <Center i={i}>🥺</Center>
     </>
   );
 }
 
-function Angry() {
+function Angry({ i = 1 }: { i?: number }) {
   return (
     <motion.div
       className="absolute inset-0"
@@ -173,21 +182,21 @@ function Angry() {
       transition={{ duration: 0.6 }}
     >
       <motion.div className="absolute inset-0 bg-red-500/20" animate={{ opacity: [0.4, 0] }} transition={{ duration: 0.8 }} />
-      <Risers glyphs={['😤', '💢', '💨']} count={14} />
-      <Center>😤</Center>
+      <Risers glyphs={['😤', '💢', '💨']} count={10 + i * 6} />
+      <Center i={i}>😤</Center>
     </motion.div>
   );
 }
 
-function Burst({ emoji }: { emoji: string }) {
+function Burst({ emoji, i = 1 }: { emoji: string; i?: number }) {
   return (
     <>
-      {Array.from({ length: 16 }).map((_, i) => {
-        const angle = (i / 16) * Math.PI * 2;
+      {Array.from({ length: 12 + i * 6 }).map((_, n) => {
+        const angle = (n / (12 + i * 6)) * Math.PI * 2;
         const dist = rand(120, 320);
         return (
           <motion.span
-            key={i}
+            key={n}
             className="absolute left-1/2 top-1/2 text-4xl"
             initial={{ x: 0, y: 0, opacity: 1, scale: 0.5 }}
             animate={{ x: Math.cos(angle) * dist, y: Math.sin(angle) * dist, opacity: 0, scale: 1.4 }}
@@ -197,7 +206,7 @@ function Burst({ emoji }: { emoji: string }) {
           </motion.span>
         );
       })}
-      <Center>{emoji}</Center>
+      <Center i={i}>{emoji}</Center>
     </>
   );
 }

@@ -12,6 +12,25 @@ export interface PetEquipped {
   scene: string | null;
 }
 
+export interface SulkGuess {
+  text: string;
+  correct: boolean;
+  at: string;
+  by?: string;
+}
+
+export interface SulkState {
+  active: boolean;
+  byClientId: string | null;
+  byName: string | null;
+  reasons: string[]; // reason ids — redacted (empty) for the guesser
+  reasonCount: number;
+  hint: string | null;
+  guesses: SulkGuess[];
+  startedAt: string | null;
+  resolvedAt: string | null;
+}
+
 export interface Pet {
   name: string;
   type: PetType;
@@ -85,6 +104,7 @@ export interface Room {
   partnerLeftAt: string | null;
   creatorTouchAt: string | null;
   partnerTouchAt: string | null;
+  sulk: SulkState;
   counts: Record<string, number>;
   total: number;
   sessionSeconds: number;

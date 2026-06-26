@@ -128,8 +128,62 @@ export const MOOD_LABEL: Record<string, string> = {
   sad: 'buồn xo',
   content: 'vui vẻ',
   excited: 'phấn khích',
-  loved: 'được yêu'
+  loved: 'được yêu',
+  sick: 'đang ốm',
+  tired: 'mệt lả'
 };
+
+/** Composite wellbeing 0..100 (happiness weighted a bit higher). */
+export function wellbeing(pet: Pet): number {
+  return clamp(Math.round((pet.fullness + pet.hydration + pet.cleanliness + pet.energy + pet.happiness * 2) / 6));
+}
+
+/** Pet is sick when badly neglected — gates rewards until cared for. */
+export function isSick(pet: Pet): boolean {
+  const critical = STAT_KEYS.filter((k) => pet[k] < 15).length;
+  return wellbeing(pet) < 22 || critical >= 3;
+}
+
+export interface PetStage {
+  key: 'baby' | 'teen' | 'adult' | 'legend';
+  label: string;
+  emoji: string;
+  scale: number;
+}
+
+export function petStage(level: number): PetStage {
+  if (level >= 10) return { key: 'legend', label: 'Huyền thoại', emoji: '👑', scale: 1.28 };
+  if (level >= 6) return { key: 'adult', label: 'Trưởng thành', emoji: '🌟', scale: 1.14 };
+  if (level >= 3) return { key: 'teen', label: 'Thiếu niên', emoji: '✨', scale: 1.0 };
+  return { key: 'baby', label: 'Bé bỏng', emoji: '🐣', scale: 0.86 };
+}
+
+// Which stat each "restore" action replenishes.
+const RESTORE_TARGET: Partial<Record<PetActionKey, PetStatKey>> = {
+  feed: 'fullness',
+  drink: 'hydration',
+  bath: 'cleanliness',
+  sleep: 'energy'
+};
+
+const ENERGY_COST_ACTIONS: PetActionKey[] = ['play', 'walk'];
+const MIN_ENERGY_TO_PLAY = 15;
+const SATISFIED_AT = 92; // stat considered "already met" above this
+
+/** Suggest the action the pet most needs right now (null if all is well). */
+export function recommendedAction(pet: Pet): PetActionKey | null {
+  const restore: [PetActionKey, number][] = [
+    ['feed', pet.fullness],
+    ['drink', pet.hydration],
+    ['bath', pet.cleanliness],
+    ['sleep', pet.energy]
+  ];
+  restore.sort((a, b) => a[1] - b[1]);
+  const [worstKey, worstVal] = restore[0];
+  if (worstVal < 55) return worstKey;
+  if (pet.happiness < 55) return pet.energy >= MIN_ENERGY_TO_PLAY ? 'play' : 'sleep';
+  return null;
+}
 
 export interface PetActionDef {
   key: PetActionKey;
@@ -166,35 +220,94 @@ export interface CareResult {
   coinGain: number;
   leveledUp: boolean;
   newLevel: number;
+  effective: number; // 0..1 — how needed/effective the action was
+  wasted: boolean; // stat already met or pet too tired
+  message: string; // feedback for the user
 }
 
-const ANTI_SPAM_MS = 3500;
-
-/** Apply a care action to the (already decayed) pet. */
+/**
+ * Apply a care action with NEED-BASED rewards:
+ * - Caring for an already-high stat is gently refused (no farming).
+ * - Playing/walking needs energy; an exhausted pet must rest first.
+ * - XP/coins scale with how much the action was actually needed.
+ */
 export function carePet(raw: Partial<Pet>, action: PetActionKey, nowMs: number): CareResult {
   const def = PET_ACTION_MAP[action];
   const pet = applyDecay(raw, nowMs);
   const prevLevel = pet.level;
 
-  const last = pet.lastActionAt ? new Date(pet.lastActionAt).getTime() : 0;
-  const antiSpam = last && nowMs - last < ANTI_SPAM_MS ? 0.4 : 1;
-
-  if (def) {
-    for (const [k, v] of Object.entries(def.effects)) {
-      const key = k as keyof Pet;
-      pet[key] = clamp((pet[key] as number) + (v as number)) as never;
-    }
-    const xpGain = Math.round(def.xp * antiSpam);
-    const coinGain = Math.round(def.coins * antiSpam);
-    pet.xp = Math.max(0, pet.xp + xpGain);
-    pet.level = levelFromXp(pet.xp);
-    pet.mood = pet.level > prevLevel ? 'excited' : def.mood;
-    pet.lastActionAt = new Date(nowMs).toISOString();
-    pet.affection = clamp(pet.affection + Math.max(1, Math.round(xpGain / 3)));
-    return { pet, xpGain, coinGain, leveledUp: pet.level > prevLevel, newLevel: pet.level };
+  if (!def) {
+    return { pet, xpGain: 0, coinGain: 0, leveledUp: false, newLevel: pet.level, effective: 0, wasted: true, message: 'Hành động không hợp lệ' };
   }
 
-  return { pet, xpGain: 0, coinGain: 0, leveledUp: false, newLevel: pet.level };
+  const target = RESTORE_TARGET[action];
+  let factor = 1; // reward multiplier 0..1
+  let wasted = false;
+  let message = `${pet.name} ${def.toast}`;
+
+  // 1) Restore actions (feed/drink/bath/sleep) — driven by the target stat's need.
+  if (target) {
+    const before = pet[target];
+    if (before >= SATISFIED_AT) {
+      wasted = true;
+      factor = 0;
+      message = `${pet.name} chưa cần ${def.label.toLowerCase()} đâu 😊`;
+    } else {
+      const need = (100 - before) / 100; // 0..1
+      factor = 0.5 + 0.5 * need; // partial reward when only slightly low
+    }
+  }
+
+  // 2) Energy-consuming actions (play/walk) — need enough energy.
+  if (ENERGY_COST_ACTIONS.includes(action)) {
+    if (pet.energy < MIN_ENERGY_TO_PLAY) {
+      wasted = true;
+      factor = 0;
+      message = `${pet.name} mệt lả rồi, cho bé ngủ trước nhé 😴`;
+      // apply only a tiny happiness bump, skip the energy drain
+      pet.happiness = clamp(pet.happiness + 2);
+      pet.mood = 'tired';
+      pet.lastActionAt = new Date(nowMs).toISOString();
+      return { pet, xpGain: 0, coinGain: 0, leveledUp: false, newLevel: pet.level, effective: 0, wasted, message };
+    }
+    // reward scales with how much happiness is needed (less reward if already thrilled)
+    const need = (100 - pet.happiness) / 100;
+    factor = 0.55 + 0.45 * need;
+  }
+
+  // Apply stat effects.
+  for (const [k, v] of Object.entries(def.effects)) {
+    const key = k as keyof Pet;
+    pet[key] = clamp((pet[key] as number) + (v as number)) as never;
+  }
+
+  // Sick pets give reduced XP from non-restorative care (must heal first).
+  const sick = isSick(pet);
+  if (sick && !target) factor *= 0.4;
+
+  const xpGain = Math.max(wasted ? 0 : 1, Math.round(def.xp * factor));
+  const coinGain = Math.max(0, Math.round(def.coins * factor));
+  pet.xp = Math.max(0, pet.xp + xpGain);
+  pet.level = levelFromXp(pet.xp);
+  pet.affection = clamp(pet.affection + (action === 'pet' ? 4 : 1) * (wasted ? 0 : 1));
+  pet.lastActionAt = new Date(nowMs).toISOString();
+
+  // Mood reflects reality: level-up > sickness > waste/need > action feel-good.
+  if (pet.level > prevLevel) pet.mood = 'excited';
+  else if (isSick(pet)) pet.mood = 'sick';
+  else if (wasted) pet.mood = deriveMood(pet);
+  else pet.mood = def.mood;
+
+  return {
+    pet,
+    xpGain,
+    coinGain,
+    leveledUp: pet.level > prevLevel,
+    newLevel: pet.level,
+    effective: factor,
+    wasted,
+    message
+  };
 }
 
 export const PET_NAME_MAX = 18;
